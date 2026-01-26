@@ -8,8 +8,8 @@ from app.api import api_router
 from app.core.seed_data import seed_database
 from app.core.supabase import get_async_supabase
 from app.core.webhooks import configure_webhooks
-from app.utils.preprocess.preprocessing_queue import init_queue
-from app.utils.supabase_check import wait_for_supabase
+from app.services.extraction.preprocessing_queue import init_queue
+from app.services.supabase_check import wait_for_supabase
 
 
 @asynccontextmanager

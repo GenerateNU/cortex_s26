@@ -1,3 +1,4 @@
+# app/services/pattern_recognition_service.py
 import json
 from uuid import UUID
 
@@ -7,50 +8,44 @@ from supabase import AsyncClient
 from app.core.supabase import get_async_supabase
 from app.schemas.classification_schemas import Classification, ExtractedFile
 from app.schemas.relationship_schemas import RelationshipCreate
-from app.utils.pattern_recognition.pattern_rec import analyze_category_relationships
+from app.services.pattern_recognition.pattern_rec import analyze_category_relationships
+from app.repositories.classification_repository import ClassificationRepository
+from app.repositories.extraction_repository import ExtractionRepository
+from app.repositories.relationship_repository import RelationshipRepository
 
 
 class PatternRecognitionService:
     """Service for pattern recognition operations"""
 
-    def __init__(self, supabase: AsyncClient):
-        self.supabase = supabase
+    def __init__(
+        self,
+        classification_repo: ClassificationRepository,
+        extraction_repo: ExtractionRepository,
+        relationship_repo: RelationshipRepository,
+    ):
+        self.classification_repo = classification_repo
+        self.extraction_repo = extraction_repo
+        self.relationship_repo = relationship_repo
 
     async def get_classifications(self, tenant_id: UUID) -> list[Classification]:
         """Fetch all classifications for a tenant from database"""
-        result = await (
-            self.supabase.table("classifications")
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
-        if not result.data:
-            return []
-
+        rows = await self.classification_repo.get_classifications_by_tenant(tenant_id)
         return [
             Classification(
                 classification_id=row["id"],
                 tenant_id=row["tenant_id"],
                 name=row["name"],
             )
-            for row in result.data
+            for row in rows
         ]
 
     async def get_extracted_files(self, tenant_id: UUID) -> list[ExtractedFile]:
         """
         Query extracted files with embeddings joined to file uploads
         """
-        response = await (
-            self.supabase.table("extracted_files")
-            .select(
-                "id, source_file_id, extracted_data, embedding, file_uploads!inner(id, type, name, tenant_id, classifications(id, tenant_id, name))"
-            )
-            .not_.is_("embedding", "null")
-            .eq("file_uploads.tenant_id", str(tenant_id))
-            .execute()
-        )
-
-        if not response.data:
+        rows = await self.extraction_repo.get_extracted_files_with_embeddings(tenant_id)
+        
+        if not rows:
             return []
 
         return [
@@ -72,7 +67,7 @@ class PatternRecognitionService:
                 if row["file_uploads"].get("classifications")
                 else None,
             )
-            for row in response.data
+            for row in rows
         ]
 
     async def analyze_and_store_relationships(
@@ -87,12 +82,7 @@ class PatternRecognitionService:
         5. Return created relationships
         """
         # DELETE existing relationships first to avoid duplicates
-        await (
-            self.supabase.table("relationships")
-            .delete()
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
+        await self.relationship_repo.delete_all_for_tenant(tenant_id)
 
         # Fetch data
         classifications = await self.get_classifications(tenant_id)
@@ -111,26 +101,16 @@ class PatternRecognitionService:
 
         # Store relationships in database
         for relationship in relationships:
-            await (
-                self.supabase.table("relationships")
-                .insert(
-                    {
-                        "tenant_id": str(relationship.tenant_id),
-                        "from_classification_id": str(
-                            relationship.from_classification_id
-                        ),
-                        "to_classification_id": str(relationship.to_classification_id),
-                        "type": relationship.type.value,
-                    }
-                )
-                .execute()
-            )
+            await self.relationship_repo.create_relationship(relationship)
 
         return relationships
-
 
 def get_pattern_recognition_service(
     supabase: AsyncClient = Depends(get_async_supabase),
 ) -> PatternRecognitionService:
     """Dependency injection for PatternRecognitionService"""
-    return PatternRecognitionService(supabase)
+    return PatternRecognitionService(
+        ClassificationRepository(supabase),
+        ExtractionRepository(supabase),
+        RelationshipRepository(supabase)
+    )

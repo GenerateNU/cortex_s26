@@ -9,7 +9,7 @@ from app.schemas.relationship_schemas import (
 )
 
 """
-To test run it -> cd into backend, then run, python3 -m app.utils.pattern_recognition.pattern_rec
+To test run it -> cd into backend, then run, python3 -m app.services.pattern_recognition.pattern_rec
 """
 
 

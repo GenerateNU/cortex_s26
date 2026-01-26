@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from app.core.dependencies import get_current_admin
 from app.schemas.preprocess_schemas import PreprocessSuccessResponse
 from app.services.preprocess_service import PreprocessService, get_preprocess_service
-from app.utils.preprocess.preprocessing_queue import PreprocessingQueue, get_queue
+from app.services.extraction.preprocessing_queue import PreprocessingQueue, get_queue
 
 router = APIRouter(prefix="/preprocess", tags=["Preprocess"])
 

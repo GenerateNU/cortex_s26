@@ -1,3 +1,4 @@
+# app/services/classification_service.py
 import json
 from uuid import UUID
 
@@ -6,27 +7,22 @@ from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
 from app.schemas.classification_schemas import Classification, ExtractedFile
+from app.repositories.classification_repository import ClassificationRepository
+from app.repositories.extraction_repository import ExtractionRepository
 
 
 class ClassificationService:
-    def __init__(self, supabase: AsyncClient):
-        self.supabase = supabase
+    def __init__(self, classification_repo: ClassificationRepository, extraction_repo: ExtractionRepository):
+        self.classification_repo = classification_repo
+        self.extraction_repo = extraction_repo
 
     async def get_extracted_files(self, tenant_id: UUID) -> list[ExtractedFile]:
         """
         Query extracted files with embeddings joined to file uploads
         """
-        response = await (
-            self.supabase.table("extracted_files")
-            .select(
-                "id, source_file_id, extracted_data, embedding, file_uploads!inner(id, type, name, tenant_id, classifications(id, tenant_id, name))"
-            )
-            .not_.is_("embedding", "null")
-            .eq("file_uploads.tenant_id", str(tenant_id))
-            .execute()
-        )
+        rows = await self.extraction_repo.get_extracted_files_with_embeddings(tenant_id)
 
-        if not response.data:
+        if not rows:
             return []
 
         return [
@@ -48,22 +44,14 @@ class ClassificationService:
                 if row["file_uploads"].get("classifications")
                 else None,
             )
-            for row in response.data
+            for row in rows
         ]
 
     async def get_classifications(self, tenant_id: UUID) -> list[Classification]:
         """
         Query classifications for the given tenant
         """
-        response = await (
-            self.supabase.table("classifications")
-            .select("*")
-            .eq("tenant_id", str(tenant_id))
-            .execute()
-        )
-
-        if not response.data:
-            return []
+        rows = await self.classification_repo.get_classifications_by_tenant(tenant_id)
 
         return [
             Classification(
@@ -71,7 +59,7 @@ class ClassificationService:
                 tenant_id=row["tenant_id"],
                 name=row["name"],
             )
-            for row in response.data
+            for row in rows
         ]
 
     async def set_classifications(
@@ -94,12 +82,8 @@ class ClassificationService:
 
         # Create new classifications
         if to_create:
-            await (
-                self.supabase.table("classifications")
-                .insert(
-                    [{"tenant_id": str(tenant_id), "name": name} for name in to_create]
-                )
-                .execute()
+            await self.classification_repo.create_classifications(
+                [{"tenant_id": str(tenant_id), "name": name} for name in to_create]
             )
 
         # Delete removed classifications
@@ -109,20 +93,10 @@ class ClassificationService:
             ]
 
             # First, unlink files
-            await (
-                self.supabase.table("file_uploads")
-                .update({"classification_id": None})
-                .in_("classification_id", ids_to_delete)
-                .execute()
-            )
+            await self.classification_repo.unlink_files_from_classifications(ids_to_delete)
 
             # Then delete classifications
-            await (
-                self.supabase.table("classifications")
-                .delete()
-                .in_("id", ids_to_delete)
-                .execute()
-            )
+            await self.classification_repo.delete_classifications(ids_to_delete)
 
         # Return updated list
         return await self.get_classifications(tenant_id)
@@ -134,18 +108,14 @@ class ClassificationService:
         Set the classification for a file upload.
         Returns True if successful, False otherwise.
         """
-        response = await (
-            self.supabase.table("file_uploads")
-            .update({"classification_id": str(classification_id)})
-            .eq("id", str(file_upload_id))
-            .execute()
-        )
-
-        return len(response.data) > 0
+        return await self.classification_repo.update_file_classification(file_upload_id, classification_id)
 
 
 def get_classification_service(
     supabase: AsyncClient = Depends(get_async_supabase),
 ) -> ClassificationService:
     """Instantiates a ClassificationService object in route parameters"""
-    return ClassificationService(supabase)
+    return ClassificationService(
+        ClassificationRepository(supabase),
+        ExtractionRepository(supabase)
+    )

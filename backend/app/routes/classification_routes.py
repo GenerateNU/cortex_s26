@@ -12,15 +12,15 @@ from app.services.classification_service import (
     ClassificationService,
     get_classification_service,
 )
-from app.utils.classification.classify_files import (
+from app.services.classification.classify_files import (
     classify_files as classify_files_helper,
 )
-from app.utils.classification.clustering_visualization import (
+from app.services.classification.clustering_visualization import (
     create_empty_visualization,
     extract_embedding_data,
     reduce_to_visualization,
 )
-from app.utils.classification.create_classifications import (
+from app.services.classification.create_classifications import (
     create_classifications as create_classifications_helper,
 )
 

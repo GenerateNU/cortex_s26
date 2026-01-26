@@ -1,13 +1,11 @@
+# app/routes/migration_routes.py
 import json
-from collections import defaultdict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from supabase._async.client import AsyncClient
 
 from app.core.dependencies import get_current_admin
-from app.core.supabase import get_async_supabase
-from app.schemas.classification_schemas import Classification, ExtractedFile
+from app.schemas.classification_schemas import Classification
 from app.schemas.migration_schemas import Migration, MigrationCreate
 from app.schemas.relationship_schemas import Relationship
 from app.services.classification_service import (
@@ -22,8 +20,8 @@ from app.services.relationship_service import (
     RelationshipService,
     get_relationship_service,
 )
-from app.utils.migrations import _table_name_for_classification, create_migrations
-from app.utils.tenant_connection import get_schema_name
+from app.services.schema_generation_service import SchemaGenerationService
+from app.services.data_sync_service import DataSyncService, get_data_sync_service
 
 router = APIRouter(prefix="/migrations", tags=["Migrations"])
 
@@ -76,7 +74,9 @@ async def generate_migrations(
                 status_code=404, detail="No classifications found for tenant"
             )
 
-        new_migration_creates: list[MigrationCreate] = create_migrations(
+        new_migration_creates: list[
+            MigrationCreate
+        ] = SchemaGenerationService.create_migrations(
             classifications=classifications,
             relationships=relationships,
             initial_migrations=existing_migrations,
@@ -125,81 +125,16 @@ async def execute_migrations(
 @router.post("/load_data/{tenant_id}")
 async def load_data_for_tenant(
     tenant_id: UUID,
-    classification_service: ClassificationService = Depends(get_classification_service),
-    supabase: AsyncClient = Depends(get_async_supabase),
+    data_sync_service: DataSyncService = Depends(get_data_sync_service),
     admin=Depends(get_current_admin),
 ) -> dict:
     """
     Full data sync for a tenant:
-
-    - Fetch all extracted files + their classifications
-    - Group by classification
-    - For each classification:
-        * derive table name (same as migrations) using helper function
-        * DELETE existing rows for that tenant in tenant-specific schema
-        * INSERT rows for each file in that classification in tenant-specific schema
+    - Fetch extracted files
+    - Update tables
     """
     try:
-        extracted_files: list[
-            ExtractedFile
-        ] = await classification_service.get_extracted_files(tenant_id)
-
-        if not extracted_files:
-            return {
-                "status": "ok",
-                "tables_updated": [],
-                "message": "No extracted files found",
-            }
-
-        files_by_class_id: dict[UUID, list[ExtractedFile]] = defaultdict(list)
-
-        for ef in extracted_files:
-            if ef.classification is None:
-                continue
-            files_by_class_id[ef.classification.classification_id].append(ef)
-
-        # Get tenant-specific schema name
-        schema_name = get_schema_name(tenant_id)
-        updated_tables: list[str] = []
-
-        for class_files in files_by_class_id.values():
-            classification = class_files[0].classification
-            table_name = _table_name_for_classification(classification)
-            qualified_table_name = f'"{schema_name}"."{table_name}"'
-
-            # Delete existing rows for this tenant in the tenant-specific schema
-            # Use parameterized approach via dollar-quoting for safety
-            tenant_id_str = str(tenant_id)
-            delete_sql = f"DELETE FROM {qualified_table_name} WHERE tenant_id = '{tenant_id_str}';"
-            await supabase.rpc("execute_sql", {"query": delete_sql}).execute()
-
-            # Insert new rows into the tenant-specific schema
-            if class_files:
-                # Build INSERT statement with proper JSONB escaping using dollar-quoting
-                values = []
-                for idx, f in enumerate(class_files):
-                    # Use dollar-quoting for JSONB to avoid SQL injection
-                    # Convert to JSON string - dollar-quoting doesn't require escaping
-                    data_json = json.dumps(f.extracted_data)
-                    # Use dollar-quoting with unique tag per value to safely handle any characters
-                    tag = f"json{idx}"
-                    values.append(
-                        f"('{str(f.extracted_file_id)}', '{tenant_id_str}', ${tag}${data_json}${tag}$::jsonb)"
-                    )
-
-                insert_sql = f"""
-INSERT INTO {qualified_table_name} (id, tenant_id, data)
-VALUES {", ".join(values)};
-""".strip()
-                await supabase.rpc("execute_sql", {"query": insert_sql}).execute()
-
-            updated_tables.append(table_name)
-
-        return {
-            "status": "ok",
-            "tables_updated": updated_tables,
-            "message": "Data synced from extracted_files into generated tables",
-        }
+        return await data_sync_service.sync_tenant(tenant_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -213,7 +148,7 @@ async def get_tenant_connection_url(
     """
     Get a PostgreSQL connection URL for a specific tenant.
     """
-    from app.utils.tenant_connection import get_schema_name, get_tenant_connection_url
+    from app.services.tenant_connection import get_schema_name, get_tenant_connection_url
 
     try:
         url = get_tenant_connection_url(tenant_id, include_public)
