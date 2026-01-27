@@ -152,12 +152,21 @@ async def classify_files(
                 status_code=404, detail="Failed to classify extracted files"
             )
 
+        import asyncio
+
+        # Batch update classification_id in database
+        update_tasks = []
         for classified_extracted_file in classified_extracted_files:
             if classified_extracted_file.classification:
-                await classification_service.classify_file(
-                    classified_extracted_file.file_upload_id,
-                    classified_extracted_file.classification.classification_id,
+                update_tasks.append(
+                    classification_service.classify_file(
+                        classified_extracted_file.file_upload_id,
+                        classified_extracted_file.classification.classification_id,
+                    )
                 )
+
+        if update_tasks:
+            await asyncio.gather(*update_tasks)
 
         return classified_extracted_files
 

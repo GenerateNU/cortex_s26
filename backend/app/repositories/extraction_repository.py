@@ -17,6 +17,9 @@ class ExtractionRepository:
             )
             .execute()
         )
+        if not result.data:
+            raise Exception(f"Failed to create queued extraction record: {result}")
+            
         return result.data[0]["id"]
 
     async def update_status(self, extracted_file_id: UUID, status: str, error: str = None) -> None:

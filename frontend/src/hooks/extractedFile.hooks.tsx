@@ -19,7 +19,7 @@ export const useGetAllExtractedFiles = () => {
 
       if (error) throw error
       return data
-        ? data.map(extractedFile => ({
+        ? data.map((extractedFile: any) => ({
             ...extractedFile,
             embedding: extractedFile.embedding as unknown as number[] | null,
           }))
@@ -30,13 +30,13 @@ export const useGetAllExtractedFiles = () => {
 
   return {
     extractedFiles: query.data,
-    extractedFilesIsLoading: query.isLoading,
+    extractedFilesIsLoading: query.isPending,
+    extractedFilesError: query.error,
+    extractedFilesRefetch: query.refetch,
   }
 }
 
 export const useGetExtractedFile = (sourceFileId: string | undefined) => {
-  const { user } = useAuth()
-
   const query = useQuery({
     queryKey: QUERY_KEYS.extractedFiles.detail(sourceFileId),
     queryFn: async (): Promise<ExtractedFile | null> => {
@@ -58,17 +58,19 @@ export const useGetExtractedFile = (sourceFileId: string | undefined) => {
         throw error
       }
 
-      return {
-        ...data,
-        embedding: data.embedding as unknown as number[] | null,
-      }
+      return data
+        ? {
+            ...data,
+            embedding: data.embedding as unknown as number[] | null,
+          }
+        : null
     },
-    enabled: !!sourceFileId && user?.role === 'admin',
+    enabled: !!sourceFileId,
   })
 
   return {
     extractedFile: query.data,
-    extractedFileIsLoading: query.isLoading,
+    extractedFileIsLoading: query.isPending,
     extractedFileError: query.error,
     extractedFileRefetch: query.refetch,
   }

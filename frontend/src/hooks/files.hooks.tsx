@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { QUERY_KEYS } from '../utils/constants'
 import { supabase } from '../config/supabase.config'
 import type { FileUpload } from '../types/file.types'
+import type { Tables } from '../types/database.types'
 import { sanitizeFilename } from '../utils/file-helpers'
 
 export const useGetAllFiles = () => {
@@ -22,14 +23,14 @@ export const useGetAllFiles = () => {
 
       if (error) throw error
       return data
-        ? data.map(file_upload => ({
+        ? (data as (Tables<'file_uploads'> & { classification: { name: string } | null })[]).map(file_upload => ({
             id: file_upload.id,
             type: file_upload.type,
             name: file_upload.name,
             tenant_id: file_upload.tenant_id,
             created_at: file_upload.created_at,
             classification: file_upload.classification
-              ? file_upload.classification.name
+              ? (file_upload.classification as { name: string }).name
               : null,
           }))
         : []
@@ -39,7 +40,7 @@ export const useGetAllFiles = () => {
 
   return {
     files: query.data,
-    filesIsLoading: query.isLoading,
+    filesIsLoading: query.isPending,
     filesError: query.error,
     filesRefetch: query.refetch,
   }
@@ -73,7 +74,9 @@ export const useGetFile = (fileUploadId: string | undefined) => {
         name: data.name,
         tenant_id: data.tenant_id,
         created_at: data.created_at,
-        classification: data.classification ? data.classification.name : null,
+        classification: data.classification
+          ? (data.classification as unknown as { name: string }).name
+          : null,
       }
     },
     enabled: !!currentTenant?.id && !!fileUploadId,
@@ -81,7 +84,7 @@ export const useGetFile = (fileUploadId: string | undefined) => {
 
   return {
     file: query.data,
-    fileIsLoading: query.isLoading,
+    fileIsLoading: query.isPending,
     fileError: query.error,
     fileRefetch: query.refetch,
   }

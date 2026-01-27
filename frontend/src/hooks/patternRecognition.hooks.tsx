@@ -44,11 +44,7 @@ export const useAnalyzeRelationships = () => {
 export const useGetRelationships = () => {
   const { currentTenant } = useAuth()
 
-  const {
-    data: relationships,
-    isLoading,
-    error,
-  } = useQuery({
+  const query = useQuery({
     queryKey: QUERY_KEYS.relationships.list(currentTenant?.id),
     enabled: !!currentTenant?.id,
     queryFn: async (): Promise<Relationship[]> => {
@@ -94,8 +90,9 @@ export const useGetRelationships = () => {
   })
 
   return {
-    relationships: relationships ?? [],
-    relationshipsIsLoading: isLoading,
-    relationshipsError: error,
+    relationships: query.data ?? [],
+    relationshipsIsLoading: query.isPending,
+    relationshipsError: query.error,
+    relationshipsRefetch: query.refetch,
   }
 }
