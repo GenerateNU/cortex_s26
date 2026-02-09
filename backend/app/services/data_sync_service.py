@@ -102,7 +102,7 @@ class DataSyncService:
                     related_id = self._resolve_fk(f, candidates)
                     data_to_insert[fk_column] = str(related_id) if related_id else None
 
-                await self._upsert_row(schema_name, table_name, data_to_insert)
+                await self.schema_repo.upsert_row(schema_name, table_name, data_to_insert)
 
         # 6. Populate MANY_TO_MANY join tables
         m2m_rels = [r for r in relationships if r.type.value == "many-to-many"]
@@ -119,12 +119,11 @@ class DataSyncService:
 
             links = self._resolve_many_to_many(from_files, to_files)
             for from_id, to_id in links:
-                sql = f"""
-INSERT INTO "{schema_name}"."{join_table}" ("{from_table}_id", "{to_table}_id")
-VALUES ('{from_id}', '{to_id}')
-ON CONFLICT DO NOTHING;
-""".strip()
-                await self.schema_repo.execute_sql(sql)
+                await self.schema_repo.insert_join_link(
+                    schema_name, join_table,
+                    f"{from_table}_id", f"{to_table}_id",
+                    from_id, to_id,
+                )
 
             tables_updated.add(join_table)
 
@@ -136,7 +135,7 @@ ON CONFLICT DO NOTHING;
         }
 
     # ------------------------------------------------------------------ #
-    #  FK Resolution — embedding nearest neighbour 
+    #  FK Resolution — embedding nearest neighbor, no magic thresholds    #
     # ------------------------------------------------------------------ #
 
     def _resolve_fk(
@@ -267,43 +266,6 @@ ON CONFLICT DO NOTHING;
         seen = set(result)
         result.extend(t for t in sorted(tables) if t not in seen)
         return result
-
-    # ------------------------------------------------------------------ #
-    #  SQL Helpers                                                        #
-    # ------------------------------------------------------------------ #
-
-    async def _upsert_row(
-        self,
-        schema_name: str,
-        table_name: str,
-        data: dict,
-    ) -> None:
-        """Build and execute a dynamic UPSERT statement."""
-        columns = ", ".join(f'"{col}"' for col in data)
-
-        val_parts: list[str] = []
-        for v in data.values():
-            if v is None:
-                val_parts.append("NULL")
-            elif isinstance(v, str):
-                val_parts.append(f"'{v.replace(chr(39), chr(39) + chr(39))}'")
-            else:
-                val_parts.append(str(v))
-        vals = ", ".join(val_parts)
-
-        update_cols = [
-            f'"{col}" = EXCLUDED."{col}"'
-            for col in data if col not in ("id", "tenant_id")
-        ]
-        update_clause = ", ".join(update_cols) if update_cols else 'data = EXCLUDED."data"'
-
-        sql = f"""
-INSERT INTO "{schema_name}"."{table_name}" ({columns})
-VALUES ({vals})
-ON CONFLICT (id) DO UPDATE SET {update_clause};
-""".strip()
-
-        await self.schema_repo.execute_sql(sql)
 
 
 def get_data_sync_service(
