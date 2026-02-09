@@ -1,17 +1,23 @@
-from uuid import UUID
 import json
 from collections import defaultdict, deque
+from uuid import UUID
 
 import numpy as np
 from fastapi import Depends
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
-from app.services.classification_service import ClassificationService, get_classification_service
-from app.services.relationship_service import RelationshipService, get_relationship_service
-from app.services.schema_generation_service import SchemaGenerationService
 from app.repositories.schema_repository import SchemaRepository
 from app.schemas.classification_schemas import ExtractedFile
+from app.services.classification_service import (
+    ClassificationService,
+    get_classification_service,
+)
+from app.services.relationship_service import (
+    RelationshipService,
+    get_relationship_service,
+)
+from app.services.schema_generation_service import SchemaGenerationService
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -237,7 +243,7 @@ class DataSyncService:
         Many-to-many relationships are skipped because their join tables are
         populated in a separate pass after all base tables exist.
         """
-        in_degree: dict[str, int] = {t: 0 for t in tables}
+        in_degree: dict[str, int] = dict.fromkeys(tables, 0)
         graph: dict[str, list[str]] = defaultdict(list)
 
         for rel in relationships:

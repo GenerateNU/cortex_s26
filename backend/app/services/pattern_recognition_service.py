@@ -6,12 +6,12 @@ from fastapi import Depends
 from supabase import AsyncClient
 
 from app.core.supabase import get_async_supabase
-from app.schemas.classification_schemas import Classification, ExtractedFile
-from app.schemas.relationship_schemas import RelationshipCreate
-from app.services.pattern_recognition.pattern_rec import analyze_category_relationships
 from app.repositories.classification_repository import ClassificationRepository
 from app.repositories.extraction_repository import ExtractionRepository
 from app.repositories.relationship_repository import RelationshipRepository
+from app.schemas.classification_schemas import Classification, ExtractedFile
+from app.schemas.relationship_schemas import RelationshipCreate
+from app.services.pattern_recognition.pattern_rec import analyze_category_relationships
 
 
 class PatternRecognitionService:
@@ -44,7 +44,7 @@ class PatternRecognitionService:
         Query extracted files with embeddings joined to file uploads
         """
         rows = await self.extraction_repo.get_extracted_files_with_embeddings(tenant_id)
-        
+
         if not rows:
             return []
 

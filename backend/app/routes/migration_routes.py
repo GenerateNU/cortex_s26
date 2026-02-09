@@ -1,5 +1,4 @@
 # app/routes/migration_routes.py
-import json
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +11,7 @@ from app.services.classification_service import (
     ClassificationService,
     get_classification_service,
 )
+from app.services.data_sync_service import DataSyncService, get_data_sync_service
 from app.services.migration_service import (
     MigrationService,
     get_migration_service,
@@ -21,7 +21,6 @@ from app.services.relationship_service import (
     get_relationship_service,
 )
 from app.services.schema_generation_service import SchemaGenerationService
-from app.services.data_sync_service import DataSyncService, get_data_sync_service
 
 router = APIRouter(prefix="/migrations", tags=["Migrations"])
 
@@ -148,7 +147,10 @@ async def get_tenant_connection_url(
     """
     Get a PostgreSQL connection URL for a specific tenant.
     """
-    from app.services.tenant_connection import get_schema_name, get_tenant_connection_url
+    from app.services.tenant_connection import (
+        get_schema_name,
+        get_tenant_connection_url,
+    )
 
     try:
         url = get_tenant_connection_url(tenant_id, include_public)

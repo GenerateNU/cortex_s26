@@ -1,6 +1,7 @@
 from uuid import UUID
+
 from supabase._async.client import AsyncClient
-import json
+
 
 class ExtractionRepository:
     def __init__(self, supabase: AsyncClient):
@@ -19,14 +20,14 @@ class ExtractionRepository:
         )
         if not result.data:
             raise Exception(f"Failed to create queued extraction record: {result}")
-            
+
         return result.data[0]["id"]
 
     async def update_status(self, extracted_file_id: UUID, status: str, error: str = None) -> None:
         payload = {"status": status}
         if error:
             payload["extracted_data"] = {"error": error}
-        
+
         await (
             self.supabase.table("extracted_files")
             .update(payload)

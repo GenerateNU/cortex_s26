@@ -1,7 +1,9 @@
 import hashlib
+
 from app.schemas.classification_schemas import Classification
 from app.schemas.migration_schemas import Migration, MigrationCreate
 from app.schemas.relationship_schemas import Relationship
+
 
 class SchemaGenerationService:
     @staticmethod

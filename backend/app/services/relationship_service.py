@@ -5,9 +5,9 @@ from fastapi import Depends
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
+from app.repositories.relationship_repository import RelationshipRepository
 from app.schemas.classification_schemas import Classification
 from app.schemas.relationship_schemas import Relationship, RelationshipCreate
-from app.repositories.relationship_repository import RelationshipRepository
 
 
 class RelationshipService:

@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.schemas.classification_schemas import Classification
 
 
-class RelationshipType(str, Enum):
+class RelationshipType(StrEnum):
     ONE_TO_ONE = "one-to-one"
     ONE_TO_MANY = "one-to-many"
     MANY_TO_MANY = "many-to-many"

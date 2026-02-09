@@ -6,9 +6,9 @@ from fastapi import Depends
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
-from app.schemas.classification_schemas import Classification, ExtractedFile
 from app.repositories.classification_repository import ClassificationRepository
 from app.repositories.extraction_repository import ExtractionRepository
+from app.schemas.classification_schemas import Classification, ExtractedFile
 
 
 class ClassificationService:

@@ -8,10 +8,6 @@ from app.schemas.classification_schemas import (
     ExtractedFile,
     VisualizationResponse,
 )
-from app.services.classification_service import (
-    ClassificationService,
-    get_classification_service,
-)
 from app.services.classification.classify_files import (
     classify_files as classify_files_helper,
 )
@@ -22,6 +18,10 @@ from app.services.classification.clustering_visualization import (
 )
 from app.services.classification.create_classifications import (
     create_classifications as create_classifications_helper,
+)
+from app.services.classification_service import (
+    ClassificationService,
+    get_classification_service,
 )
 
 router = APIRouter(prefix="/classification", tags=["Classification"])

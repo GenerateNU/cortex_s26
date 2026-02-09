@@ -5,9 +5,12 @@ from fastapi import Depends
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
-from app.services.extraction.embeddings import generate_embedding
-from app.services.extraction.pdf_strategy import PdfExtractionStrategy, get_pdf_extraction_strategy
 from app.repositories.extraction_repository import ExtractionRepository
+from app.services.extraction.embeddings import generate_embedding
+from app.services.extraction.pdf_strategy import (
+    PdfExtractionStrategy,
+    get_pdf_extraction_strategy,
+)
 
 
 class PreprocessService:

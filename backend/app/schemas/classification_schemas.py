@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -14,7 +14,7 @@ class Classification(BaseModel):
     name: str
 
 
-class FileType(str, Enum):
+class FileType(StrEnum):
     PDF = "pdf"
     CSV = "csv"
 

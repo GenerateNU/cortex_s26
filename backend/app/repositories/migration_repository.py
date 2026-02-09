@@ -1,6 +1,9 @@
 from uuid import UUID
+
 from supabase._async.client import AsyncClient
+
 from app.schemas.migration_schemas import MigrationCreate
+
 
 class MigrationRepository:
     def __init__(self, supabase: AsyncClient):

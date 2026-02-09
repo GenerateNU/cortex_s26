@@ -5,9 +5,9 @@ from fastapi import Depends
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
-from app.schemas.migration_schemas import Migration, MigrationCreate
 from app.repositories.migration_repository import MigrationRepository
 from app.repositories.schema_repository import SchemaRepository
+from app.schemas.migration_schemas import Migration, MigrationCreate
 
 
 class MigrationService:

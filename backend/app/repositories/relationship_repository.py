@@ -1,6 +1,9 @@
 from uuid import UUID
+
 from supabase._async.client import AsyncClient
+
 from app.schemas.relationship_schemas import RelationshipCreate
+
 
 class RelationshipRepository:
     def __init__(self, supabase: AsyncClient):

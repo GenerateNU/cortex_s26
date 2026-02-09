@@ -1,7 +1,7 @@
 from uuid import UUID
+
 from supabase._async.client import AsyncClient
-from app.schemas.classification_schemas import Classification, ExtractedFile
-import json
+
 
 class ClassificationRepository:
     def __init__(self, supabase: AsyncClient):
