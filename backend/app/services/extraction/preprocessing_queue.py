@@ -7,6 +7,8 @@ from app.services.product_service import ProductService
 from app.repositories.product_repository import ProductRepository
 from app.services.preprocess_service import PreprocessService
 from app.repositories.extraction_repository import ExtractionRepository
+from app.services.extraction.csv_strategy import get_csv_extraction_strategy
+from app.services.extraction.excel_strategy import get_excel_extraction_strategy
 from app.services.extraction.pdf_strategy import get_pdf_extraction_strategy
 
 
@@ -17,11 +19,15 @@ class PreprocessingQueue:
         # Initialize dependencies
         extraction_repo = ExtractionRepository(supabase)
         pdf_strategy = get_pdf_extraction_strategy()
+        csv_strategy = get_csv_extraction_strategy()
+        excel_strategy = get_excel_extraction_strategy()
         # Initialize product service
         product_repo = ProductRepository(supabase)
         product_service = ProductService(product_repo)
         
-        self.service = PreprocessService(extraction_repo, pdf_strategy, product_service)
+        self.service = PreprocessService(
+            extraction_repo, pdf_strategy, csv_strategy, excel_strategy
+        , product_service)
 
     async def start_worker(self):
         """Start background worker"""
@@ -35,7 +41,7 @@ class PreprocessingQueue:
             extracted_file_id = await self._queue.get()
             try:
                 print(f"Processing {extracted_file_id}", flush=True)
-                await self.service.process_pdf_upload(extracted_file_id)
+                await self.service.process_file_upload(extracted_file_id)
                 print(f"Completed {extracted_file_id}", flush=True)
             except Exception as e:
                 print(f"Failed {extracted_file_id}: {e}", flush=True)

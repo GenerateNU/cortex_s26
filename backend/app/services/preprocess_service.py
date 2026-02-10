@@ -6,6 +6,14 @@ from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
 from app.services.extraction.embeddings import generate_embedding
+from app.services.extraction.csv_strategy import (
+    CsvExtractionStrategy,
+    get_csv_extraction_strategy,
+)
+from app.services.extraction.excel_strategy import (
+    ExcelExtractionStrategy,
+    get_excel_extraction_strategy,
+)
 from app.services.extraction.pdf_strategy import PdfExtractionStrategy, get_pdf_extraction_strategy
 from app.repositories.extraction_repository import ExtractionRepository
 from app.services.product_service import ProductService
@@ -15,13 +23,17 @@ from app.schemas.product_schemas import ProductIngest
 
 class PreprocessService:
     def __init__(
-        self, 
-        extraction_repo: ExtractionRepository, 
+        self,
+        extraction_repo: ExtractionRepository,
         pdf_strategy: PdfExtractionStrategy,
-        product_service: ProductService
+        product_service: ProductService,
+        csv_strategy: CsvExtractionStrategy,
+        excel_strategy: ExcelExtractionStrategy
     ):
         self.extraction_repo = extraction_repo
         self.pdf_strategy = pdf_strategy
+        self.csv_strategy = csv_strategy
+        self.excel_strategy = excel_strategy
         self.product_service = product_service
 
     async def created_queued_extraction(self, file_upload_id: UUID) -> UUID:
@@ -30,10 +42,10 @@ class PreprocessService:
         """
         return await self.extraction_repo.create_queued_extraction(file_upload_id)
 
-    async def process_pdf_upload(self, extracted_file_id: UUID) -> str:
+    async def process_file_upload(self, extracted_file_id: UUID) -> str:
         """
         Full preprocessing pipeline:
-        1. Download PDF from storage
+        1. Download file from storage
         2. Extract structured data
         3. Generate embedding
         4. Store in extracted_files
@@ -47,13 +59,26 @@ class PreprocessService:
 
             tenant_id = response_data["file_uploads"]["tenant_id"]
             file_name = response_data["file_uploads"]["name"]
+            file_name_lower = file_name.lower()
 
-            # Download PDF
-            pdf_bytes = await self.extraction_repo.download_file(tenant_id, file_name)
-            print("PDF downloaded", flush=True)
+            # Download file
+            file_bytes = await self.extraction_repo.download_file(tenant_id, file_name)
+            print("File downloaded", flush=True)
 
-            # Extract data
-            extraction_result = await self.pdf_strategy.extract_data(pdf_bytes, file_name)
+            # Route by file extension
+            if file_name_lower.endswith(".pdf"):
+                extraction_result = await self.pdf_strategy.extract_data(
+                    file_bytes, file_name
+                )
+            elif file_name_lower.endswith(".csv"):
+                extraction_result = self.csv_strategy.extract_data(file_bytes, file_name)
+            elif file_name_lower.endswith(".xlsx") or file_name_lower.endswith(".xls"):
+                extraction_result = self.excel_strategy.extract_data(
+                    file_bytes, file_name
+                )
+            else:
+                raise ValueError(f"Unsupported file extension for '{file_name}'")
+
             extracted_json = extraction_result["result"]
             print("Data extracted", flush=True)
 
@@ -108,5 +133,7 @@ def get_preprocess_service(
     return PreprocessService(
         ExtractionRepository(supabase),
         get_pdf_extraction_strategy(),
+        get_csv_extraction_strategy(),
+        get_excel_extraction_strategy(),
         ProductService(ProductRepository(supabase))
     )

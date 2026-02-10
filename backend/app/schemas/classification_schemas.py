@@ -17,6 +17,8 @@ class Classification(BaseModel):
 class FileType(str, Enum):
     PDF = "pdf"
     CSV = "csv"
+    XLSX = "xlsx"
+    XLS = "xls"
 
 
 class ExtractedFile(BaseModel):
