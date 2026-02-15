@@ -49,8 +49,37 @@ class GraphRepository:
 
         return records[0]["r"]
 
-    def query(self):
-        pass
+    def query(self, query, **kwargs):
+        """
+        Executes a Cypher query with the provided parameters and returns the results.
+        """
+        records, summary, keys = self.driver.execute_query(
+            query,
+            **kwargs,
+            database_=self.database
+        )
+        return records
+        
 
-    def delete_node(self):
-        pass
+    def delete_node(self, node_id):
+        query = f"""
+        MATCH (n {{uuid: $node_id}})
+        DETACH DELETE n
+        """
+        self.driver.execute_query(
+            query,
+            node_id=node_id,
+            database_=self.database
+        )
+
+    def delete_relationship(self, from_node_id, to_node_id, relationship_type):
+        query = f"""
+        MATCH (a {{uuid: $from_uuid}})-[r:{relationship_type}]->(b {{uuid: $to_uuid}})
+        DELETE r
+        """
+        self.driver.execute_query(
+            query,
+            from_uuid=from_node_id,
+            to_uuid=to_node_id,
+            database_=self.database
+        )
