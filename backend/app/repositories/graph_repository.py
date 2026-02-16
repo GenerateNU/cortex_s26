@@ -10,38 +10,41 @@ class GraphRepository:
     def close(self):        
         self.driver.close()
 
-    def create_node(self, node_label, extracted_data):
+    def create_node(self, tenant_id, node_label, node_id, extracted_data):
         """
         Creates a node in the graph database with the specified label and data.
+        If a node with the same tenant_id and uuid already exists, it updates the properties instead.
         """
         query = f"""
-        CREATE (n: {node_label}) 
+        MERGE (n:{node_label} {{tenant_id: $tenant_id, uuid: $uuid}})
         SET n += $props
-        SET n.uuid = randomUUID()
         RETURN n"""
 
         records, summary, keys = self.driver.execute_query(
             query,
+            tenant_id=tenant_id,
+            uuid=node_id,
             props=extracted_data,
             database_=self.database
         )
 
         return records[0]["n"]
 
-    def create_relationship(self, from_node_id, to_node_id, relationship_type):
+    def create_relationship(self, tenant_id, from_node_id, to_node_id, relationship_type):
         """
         Creates a relationship of the specified type between two nodes identified by their IDs if it doesn't already exist.
         """
         # merge checks if the relationship already exists, if not it creates it instead of creating duplicate relationships
         query = f"""
-        MATCH (a {{uuid: $from_uuid}})
-        MATCH (b {{uuid: $to_uuid}})
+        MATCH (a {{tenant_id: $tenant_id, uuid: $from_uuid}})
+        MATCH (b {{tenant_id: $tenant_id, uuid: $to_uuid}})
         MERGE (a)-[r:{relationship_type}]->(b) 
         RETURN r
         """
 
         records, _, _ = self.driver.execute_query(
             query,
+            tenant_id=tenant_id,
             from_uuid=from_node_id,
             to_uuid=to_node_id,
             database_=self.database
@@ -61,24 +64,28 @@ class GraphRepository:
         return records
         
 
-    def delete_node(self, node_id):
-        query = f"""
-        MATCH (n {{uuid: $node_id}})
+    def delete_node(self, tenant_id, node_id):
+        query = """
+        MATCH (n {tenant_id: $tenant_id, uuid: $node_id})
         DETACH DELETE n
         """
         self.driver.execute_query(
             query,
+            tenant_id=tenant_id,
             node_id=node_id,
             database_=self.database
         )
 
-    def delete_relationship(self, from_node_id, to_node_id, relationship_type):
+    def delete_relationship(self, tenant_id, from_node_id, to_node_id, relationship_type):
         query = f"""
-        MATCH (a {{uuid: $from_uuid}})-[r:{relationship_type}]->(b {{uuid: $to_uuid}})
+        MATCH (a {{tenant_id: $tenant_id, uuid: $from_uuid}})
+              -[r:{relationship_type}]->
+              (b {{tenant_id: $tenant_id, uuid: $to_uuid}})
         DELETE r
         """
         self.driver.execute_query(
             query,
+            tenant_id=tenant_id,
             from_uuid=from_node_id,
             to_uuid=to_node_id,
             database_=self.database

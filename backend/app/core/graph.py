@@ -14,5 +14,4 @@ def get_graph_repository() -> GraphRepository:
         uri=os.getenv("NEO4J_URI"),
         user=os.getenv("NEO4J_USER"),
         password=os.getenv("NEO4J_PASSWORD"),
-        database=os.getenv("NEO4J_DATABASE"),
     )
