@@ -2,6 +2,9 @@ from neo4j import GraphDatabase, RoutingControl
 from neo4j.exceptions import DriverError, Neo4jError
 
 class GraphRepository:
+    node_labels = {"Product Specs", "Sales Records", "Customers", "RFQs", "Configurations", "Quotes", "Purchase Orders"}
+    relationship_types = {"SOLD_TO", "CONTAINS_ITEM", "CONFIGURED_FOR", "QUOTED_FOR", "ORDERED_BY"}
+
     def __init__(self, uri, user, password, database=None):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         self.database = database
@@ -15,6 +18,9 @@ class GraphRepository:
         Creates a node in the graph database with the specified label and data.
         If a node with the same tenant_id and uuid already exists, it updates the properties instead.
         """
+        if node_label not in self.node_labels:
+            raise ValueError(f"Invalid node label: {node_label}. Allowed labels are: {self.node_labels}")
+        
         query = f"""
         MERGE (n:{node_label} {{tenant_id: $tenant_id, uuid: $uuid}})
         SET n += $props
@@ -34,6 +40,8 @@ class GraphRepository:
         """
         Creates a relationship of the specified type between two nodes identified by their IDs if it doesn't already exist.
         """
+        if relationship_type not in self.relationship_types:
+            raise ValueError(f"Invalid relationship type: {relationship_type}. Allowed types are: {self.relationship_types}")
         # merge checks if the relationship already exists, if not it creates it instead of creating duplicate relationships
         query = f"""
         MATCH (a {{tenant_id: $tenant_id, uuid: $from_uuid}})
