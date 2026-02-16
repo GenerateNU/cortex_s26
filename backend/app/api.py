@@ -7,6 +7,7 @@ from app.routes.migration_routes import router as migration_router
 from app.routes.pattern_recognition_routes import router as pattern_recognition_router
 from app.routes.preprocess_routes import router as preprocess_router
 from app.routes.webhook_routes import router as webhook_router
+from app.routes.graph_routes import router as graph_router
 
 api_router = APIRouter(prefix="/api")
 
@@ -25,3 +26,4 @@ api_router.include_router(preprocess_router)
 api_router.include_router(webhook_router)
 api_router.include_router(pattern_recognition_router)
 api_router.include_router(migration_router)
+api_router.include_router(graph_router)

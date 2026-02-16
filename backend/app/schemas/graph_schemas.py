@@ -54,3 +54,16 @@ class GraphQueryRequest(BaseModel):
         default_factory=dict,
         description="Cypher query parameters"
     )
+
+class GraphQueryResponse(BaseModel):
+    records: List[Dict[str, Any]] = Field(
+        description="List of result rows returned from the Cypher query"
+    )
+
+class PathRequest(BaseModel):
+    from_node_id: str = Field(..., description="UUID of the starting node")
+    to_node_id: str = Field(..., description="UUID of the ending node")
+
+class GraphPath(BaseModel):
+    nodes: GraphNodes
+    relationships: GraphEdges
