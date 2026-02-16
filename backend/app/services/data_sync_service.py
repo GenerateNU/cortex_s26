@@ -8,6 +8,8 @@ from app.services.classification_service import ClassificationService, get_class
 from app.services.relationship_service import RelationshipService, get_relationship_service
 from app.services.schema_generation_service import SchemaGenerationService
 from app.repositories.schema_repository import SchemaRepository
+from app.services.graph_service import GraphService
+from app.core.neo4j import get_graph_repo
 
 class DataSyncService:
     def __init__(
@@ -15,10 +17,12 @@ class DataSyncService:
         classification_service: ClassificationService,
         relationship_service: RelationshipService,
         schema_repo: SchemaRepository,
+        graph_service: GraphService | None = None,
     ):
         self.classification_service = classification_service
         self.relationship_service = relationship_service
         self.schema_repo = schema_repo
+        self.graph_service = graph_service
 
     async def sync_tenant(self, tenant_id: UUID) -> dict:
         """
@@ -114,8 +118,24 @@ ON CONFLICT (id) DO UPDATE SET
         return {
             "status": "success",
             "tables_updated": list(tables_updated),
-            "total_files": len(extracted_files)
+            "total_files": len(extracted_files),
+            "graph_sync": await self._sync_graph(tenant_id),
         }
+
+    async def _sync_graph(self, tenant_id: UUID) -> dict:
+        """
+        Chain graph sync after Supabase data sync.
+        Gracefully handles failures so Supabase sync result isn't lost.
+        """
+        if not self.graph_service:
+            return {"status": "skipped", "message": "Graph service not configured"}
+
+        try:
+            result = await self.graph_service.sync_tenant_to_graph(tenant_id)
+            return result.model_dump()
+        except Exception as e:
+            print(f"Graph sync failed (non-fatal): {e}", flush=True)
+            return {"status": "error", "message": str(e)}
 
     def _resolve_fk(self, entry_data: dict, target_name: str, candidate_files: list) -> UUID | None:
         """
@@ -172,8 +192,14 @@ def get_data_sync_service(
     relationship_service: RelationshipService = Depends(get_relationship_service),
     supabase: AsyncClient = Depends(get_async_supabase),
 ) -> DataSyncService:
+    graph_repo = get_graph_repo()
+    graph_service = GraphService(
+        classification_service, relationship_service, graph_repo
+    ) if graph_repo else None
+
     return DataSyncService(
         classification_service,
         relationship_service,
-        SchemaRepository(supabase)
+        SchemaRepository(supabase),
+        graph_service,
     )
