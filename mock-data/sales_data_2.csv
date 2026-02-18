@@ -1,0 +1,20 @@
+invoice number,customer ID,invoice date,item quantity,item SKU,ship location,description,sales price,total quantity
+INV-2026-5020,CUST-2010,2026/03/01,4,WHL-16ST,"PHOENIX, AZ",Steel wheel 16in fleet utility,248.50,18
+INV-2026-5020,CUST-2010,2026-01-12,6,whl-17al,"Houston, TX",Alloy wheel 17in mid SUV silver,$314.75,18
+INV-2026-5021,CUST-2013, 02/14/2026 ,3,WHL-15ST,,Steel wheel 15in compact black,189.90,
+INV-2026-5021,CUST-2013,2026/03/01,,WHL-18AL,"Houston, TX",Alloy wheel 18in 4x4 gunmetal,$422.00,11
+INV-2026-5022,CUST-2004,2026-01-12,5,lug-m14," detroit, mi ",Lug nut M14 conical chr steel,11.25,11
+INV-2026-5023,CUST-2006,2026/03/01,2,CF-E8S1,"PHOENIX, AZ",Elec fryer 8L single tank ctrtp,$285.00,24
+INV-2026-5023,CUST-2006, 02/14/2026 ,1,CF-E8D2,"Houston, TX",Elec fryer 8L double tank ctrtp,495.00,24
+INV-2026-5024,CUST-2011,2026-01-12,3,cf-g18f,,Gas fryer 18L floor standing,$720.00,
+INV-2026-5024,CUST-2011,2026/03/01,1,CF-G22P," detroit, mi ",Pressure fryer 22L gas floor,1450.00,9
+INV-2026-5025,CUST-2002, 02/14/2026 ,10,BSK-8SM,"Houston, TX",Fryer basket sm stainless steel,$12.50,9
+INV-2026-5025,CUST-2002,2026-01-12,6,bsk-18lg,"PHOENIX, AZ",Fryer basket lg stainless steel,18.75,9
+INV-2026-5026,CUST-2009,2026/03/01,,OIL-FILT,"Houston, TX",Oil filtration machine portable,$340.00,15
+INV-2026-5026,CUST-2009, 02/14/2026 ,4,CLN-5LDG,,Fryer degreaser food safe 5L,22.00,15
+INV-2026-5027,CUST-2013,2026-01-12,1,MC004N-B00,"PHOENIX, AZ",Kawasaki robot MC004N bottom conn,$28500.00,31
+INV-2026-5027,CUST-2013,2026/03/01,2,mc004n-b01,"Houston, TX",Kawasaki robot MC004N backside,28500.00,31
+INV-2026-5028,CUST-2005, 02/14/2026 ,1,MC004V-B00," detroit, mi ",Kawasaki robot MC004V VHP floor,$29800.00,
+INV-2026-5028,CUST-2005,2026-01-12,,mc004v-b01,,Kawasaki robot MC004V VHP ceil,29800.00,17
+INV-2026-5029,CUST-2007,2026/03/01,3,RBT-CTRL,"Houston, TX",Robot controller unit E series,$4200.00,17
+INV-2026-5029,CUST-2007, 02/14/2026 ,5,rbt-teach,"PHOENIX, AZ",Teach pendant with cable 10m,850.00,17
