@@ -41,7 +41,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.routes import product_routes
+
 app.include_router(api_router)
+app.include_router(product_routes.router)
 
 
 @app.get("/")

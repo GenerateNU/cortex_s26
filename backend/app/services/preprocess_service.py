@@ -8,12 +8,21 @@ from app.core.supabase import get_async_supabase
 from app.services.extraction.embeddings import generate_embedding
 from app.services.extraction.pdf_strategy import PdfExtractionStrategy, get_pdf_extraction_strategy
 from app.repositories.extraction_repository import ExtractionRepository
+from app.services.product_service import ProductService
+from app.repositories.product_repository import ProductRepository
+from app.schemas.product_schemas import ProductIngest
 
 
 class PreprocessService:
-    def __init__(self, extraction_repo: ExtractionRepository, pdf_strategy: PdfExtractionStrategy):
+    def __init__(
+        self, 
+        extraction_repo: ExtractionRepository, 
+        pdf_strategy: PdfExtractionStrategy,
+        product_service: ProductService
+    ):
         self.extraction_repo = extraction_repo
         self.pdf_strategy = pdf_strategy
+        self.product_service = product_service
 
     async def created_queued_extraction(self, file_upload_id: UUID) -> UUID:
         """
@@ -28,6 +37,7 @@ class PreprocessService:
         2. Extract structured data
         3. Generate embedding
         4. Store in extracted_files
+        5. Ingest into Product Search Index
         """
         try:
             # Update status to "processing"
@@ -55,8 +65,28 @@ class PreprocessService:
             await self.extraction_repo.update_extraction_result(
                 extracted_file_id, extracted_json, embedding_vector
             )
-
             print("Extraction stored", flush=True)
+            
+            # --- AUTO-INGESTION ---
+            try:
+                # Attempt to find a suitable ID for the product. 
+                # If extraction has 'product_id' or 'id', use it. Otherwise fall back to file name or UUID.
+                product_id = extracted_json.get("product_id") or extracted_json.get("id") or file_name
+                
+                # Create ingestion object
+                ingest_data = ProductIngest(
+                    product_id=str(product_id),
+                    metadata=extracted_json
+                )
+                
+                print(f"Auto-ingesting product: {product_id}", flush=True)
+                await self.product_service.ingest_product(ingest_data)
+                print("Auto-ingestion complete", flush=True)
+                
+            except Exception as e:
+                # Log error but don't fail the whole extraction if search indexing fails
+                print(f"Warning: Auto-ingestion failed for {extracted_file_id}: {e}", flush=True)
+
             return str(extracted_file_id)
         except Exception as e:
             # Update status to "failed" and store error
@@ -77,5 +107,6 @@ def get_preprocess_service(
     print("Created Preprocess Service")
     return PreprocessService(
         ExtractionRepository(supabase),
-        get_pdf_extraction_strategy()
+        get_pdf_extraction_strategy(),
+        ProductService(ProductRepository(supabase))
     )

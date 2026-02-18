@@ -3,6 +3,8 @@ from uuid import UUID
 
 from supabase._async.client import AsyncClient
 
+from app.services.product_service import ProductService
+from app.repositories.product_repository import ProductRepository
 from app.services.preprocess_service import PreprocessService
 from app.repositories.extraction_repository import ExtractionRepository
 from app.services.extraction.pdf_strategy import get_pdf_extraction_strategy
@@ -15,7 +17,11 @@ class PreprocessingQueue:
         # Initialize dependencies
         extraction_repo = ExtractionRepository(supabase)
         pdf_strategy = get_pdf_extraction_strategy()
-        self.service = PreprocessService(extraction_repo, pdf_strategy)
+        # Initialize product service
+        product_repo = ProductRepository(supabase)
+        product_service = ProductService(product_repo)
+        
+        self.service = PreprocessService(extraction_repo, pdf_strategy, product_service)
 
     async def start_worker(self):
         """Start background worker"""
