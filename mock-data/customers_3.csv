@@ -1,0 +1,3 @@
+customer_id,company_name,industry,contact_name,contact_email,phone,hq_address,hq_city,hq_state,hq_zip
+CUST-1001,GridIron Fleet Services,Automotive Fleet Management,Marcus Webb,m.webb@gridironfleet.com,313-555-0142,45 Industrial Road,Detroit,MI,48201
+CUST-2001,CrispCo Hospitality Group,Fast Food & Food Service,Sandra Okafor,s.okafor@crispco.com,404-555-0219,55 Kitchen Park Blvd,Atlanta,GA,30301
