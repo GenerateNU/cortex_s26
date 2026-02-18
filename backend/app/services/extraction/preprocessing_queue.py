@@ -7,8 +7,7 @@ from app.services.product_service import ProductService
 from app.repositories.product_repository import ProductRepository
 from app.services.preprocess_service import PreprocessService
 from app.repositories.extraction_repository import ExtractionRepository
-from app.services.extraction.csv_strategy import get_csv_extraction_strategy
-from app.services.extraction.excel_strategy import get_excel_extraction_strategy
+from app.services.extraction.csv_excel_strategy import get_csv_extraction_strategy
 from app.services.extraction.pdf_strategy import get_pdf_extraction_strategy
 
 
@@ -19,14 +18,13 @@ class PreprocessingQueue:
         # Initialize dependencies
         extraction_repo = ExtractionRepository(supabase)
         pdf_strategy = get_pdf_extraction_strategy()
-        csv_strategy = get_csv_extraction_strategy()
-        excel_strategy = get_excel_extraction_strategy()
+        csv_excel_strategy = get_csv_extraction_strategy()  # Handles both CSV and Excel
         # Initialize product service
         product_repo = ProductRepository(supabase)
         product_service = ProductService(product_repo)
         
         self.service = PreprocessService(
-            extraction_repo, pdf_strategy, csv_strategy, excel_strategy
+            extraction_repo, pdf_strategy, csv_excel_strategy
         , product_service)
 
     async def start_worker(self):
