@@ -74,7 +74,7 @@ class DataSyncService:
                 
                 # Try to find the related ID in extracted data
                 # We look for keys that match the related classification name or table name
-                related_id = self._resolve_fk(f.extracted_data, rel.to_classification.name, files_by_class.get(rel.to_classification.name, []))
+                related_id = self._resolve_fk(source_file=f, target_classification_id=rel.to_classification.classification_id)
                 
                 if related_id:
                     data_to_insert[fk_column] = str(related_id)
@@ -117,25 +117,34 @@ ON CONFLICT (id) DO UPDATE SET
             "total_files": len(extracted_files)
         }
 
-    def _resolve_fk(self, entry_data: dict, target_name: str, candidate_files: list) -> UUID | None:
+    async def _resolve_fk(self, source_file, target_classification_id: UUID) -> UUID | None:
         """
         Heuristic to find a related record's ID.
         Looks for keys in entry_data that match target_name.
         """
-        # 1. Look for direct key matches (e.g. "Model": "XYZ")
-        target_keys = [target_name.lower(), target_name.replace(" ", "_").lower(), "model", "type", "category"]
+        if not source_file.embedding:
+            return None
+    
+        # 1. Use vector similarity to find candidate files that are related
+        matches = await self.schema_repo.call_rpc(
+            "match_documents",
+            {
+                "query_embedding": source_file.embedding,
+                "match_threshold": 0.75,
+                "match_count": 10,
+                "filter_tenant_id": str(source_file.tenant_id),
+                # might also want to filter by classification type, add to 006_vectorization.sql file
+            }
+        )
+
+        # 2. Check if any of the matches have the target classification
+        if not matches:
+            return None
         
-        # Flattened lookup
-        flat_data = self._flatten_dict(entry_data)
-        
-        for key, value in flat_data.items():
-            if any(tk in key.lower() for tk in target_keys):
-                # We found a potential link value (e.g. "XYZ")
-                # Now find a file in candidate_files whose data or name matches this value
-                match = self._find_matching_file(value, candidate_files)
-                if match:
-                    return match.file_upload_id
-        
+        for match in matches:
+            if match["classification_id"] == str(target_classification_id):
+                return match["source_file_id"]
+
         return None
 
     def _flatten_dict(self, d: dict, parent_key: str = '', sep: str = '_') -> dict:

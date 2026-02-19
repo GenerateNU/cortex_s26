@@ -44,6 +44,10 @@ BEGIN
     file_type_val := 'pdf';
   ELSIF filename ILIKE '%.csv' THEN
     file_type_val := 'csv';
+  ELSIF filename ILIKE '%.xlsx' THEN
+    file_type_val := 'xlsx';
+  ELSIF filename ILIKE '%.xls' THEN
+    file_type_val := 'xls';
   ELSE
     -- Skip unsupported file types
     RETURN NEW;
@@ -54,11 +58,6 @@ BEGIN
   VALUES (file_type_val, filename, NEW.bucket_id, tenant_id_val)
   ON CONFLICT DO NOTHING
   RETURNING id INTO file_upload_id;
-
-  -- Only trigger webhook for PDFs
-  IF file_type_val != 'pdf' THEN
-    RETURN NEW;
-  END IF;
 
   -- Get webhook config from table (persists across sessions)
   SELECT value INTO webhook_url 
