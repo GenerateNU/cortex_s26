@@ -1,4 +1,4 @@
-import type { Tenant } from './tenant.types'
+// import type { Tenant } from './tenant.types'
 
 export interface ETLOperation {
   id: string
@@ -35,9 +35,9 @@ export interface ProcessingJobResult {
   processing_time: number
 }
 
-export interface TenantSummary {
-  tenant: Tenant
-  file_count: number
-  processing_jobs: number
-  last_activity: string
-}
+// export interface TenantSummary {
+//   tenant: Tenant
+//   file_count: number
+//   processing_jobs: number
+//   last_activity: string
+// }

@@ -1,27 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../config/axios.config'
-import { useAuth } from '../contexts/AuthContext'
+// import { useAuth } from '../contexts/AuthContext'
 import { QUERY_KEYS } from '../utils/constants'
 import type { Migration } from '../types/migration.types'
 import { supabase } from '../config/supabase.config'
 
 export const useListMigrations = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
 
   const {
     data: migrations,
     isLoading,
     error,
   } = useQuery({
-    queryKey: QUERY_KEYS.migrations.list(currentTenant?.id),
-    enabled: !!currentTenant?.id,
+    queryKey: QUERY_KEYS.migrations.list('default'),
+    enabled: true,
     queryFn: async (): Promise<Migration[]> => {
-      if (!currentTenant) return []
+      // if (!currentTenant) return []
 
       const { data, error } = await supabase
         .from('migrations')
         .select('id, tenant_id, name, sql, sequence')
-        .eq('tenant_id', currentTenant.id)
+        // .eq('tenant_id', currentTenant.id)
         .order('sequence', { ascending: true })
 
       if (error) throw error
@@ -46,23 +46,19 @@ export const useListMigrations = () => {
 }
 
 export const useGenerateMigrations = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
   const queryClient = useQueryClient()
 
   const mutation = useMutation({
     mutationFn: async (): Promise<Migration[]> => {
-      if (!currentTenant) {
-        throw new Error('No tenant selected')
-      }
-
       const { data } = await api.post(
-        `/migrations/generate/${currentTenant.id}`
+        `/migrations/generate/default`
       )
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.migrations.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.migrations.list('default'),
       })
     },
   })
@@ -75,20 +71,16 @@ export const useGenerateMigrations = () => {
 }
 
 export const useExecuteMigrations = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
   const queryClient = useQueryClient()
 
   const mutation = useMutation({
     mutationFn: async (): Promise<void> => {
-      if (!currentTenant) {
-        throw new Error('No tenant selected')
-      }
-
-      await api.post(`/migrations/execute/${currentTenant.id}`)
+      await api.post(`/migrations/execute/default`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.migrations.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.migrations.list('default'),
       })
     },
   })
@@ -107,26 +99,22 @@ export interface LoadDataResponse {
 }
 
 export const useLoadData = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
   const queryClient = useQueryClient()
 
   const mutation = useMutation({
     mutationFn: async (): Promise<LoadDataResponse> => {
-      if (!currentTenant) {
-        throw new Error('No tenant selected')
-      }
-
       const { data } = await api.post(
-        `/migrations/load_data/${currentTenant.id}`
+        `/migrations/load_data/default`
       )
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.migrations.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.migrations.list('default'),
       })
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.migrations.connectionUrlDetail(currentTenant?.id),
+        queryKey: QUERY_KEYS.migrations.connectionUrlDetail('default'),
       })
     },
   })
@@ -148,22 +136,18 @@ export interface ConnectionUrlResponse {
 }
 
 export const useGetConnectionUrl = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
 
   const {
     data: connectionUrl,
     isLoading,
     error,
   } = useQuery({
-    queryKey: QUERY_KEYS.migrations.connectionUrlDetail(currentTenant?.id),
-    enabled: !!currentTenant?.id,
+    queryKey: QUERY_KEYS.migrations.connectionUrlDetail('default'),
+    enabled: true,
     queryFn: async (): Promise<ConnectionUrlResponse> => {
-      if (!currentTenant) {
-        throw new Error('No tenant selected')
-      }
-
       const { data } = await api.get(
-        `/migrations/connection-url/${currentTenant.id}`
+        `/migrations/connection-url/default`
       )
       return data
     },

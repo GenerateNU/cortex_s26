@@ -31,7 +31,6 @@ export function DocumentPage() {
     Map<string, { status: 'uploading' | 'success' | 'error'; error?: string }>
   >(new Map())
 
-  const isTenant = user?.role === 'tenant'
   const isAdmin = user?.role === 'admin'
 
   const handleExtractedFilesChange = useCallback(() => {
@@ -59,9 +58,11 @@ export function DocumentPage() {
 
   const getFileStatus = (
     fileId: string
-  ): 'queued' | 'processing' | 'completed' | 'failed' | 'error' => {
-    const extracted = extractedFiles?.find(ef => ef.source_file_id === fileId)
-    return extracted ? extracted.status : 'error'
+  ): 'completed' | 'processing' => {
+    // There is no status column on ExtractedFile. 
+    // If we have the record, it's processed.
+    const extracted = extractedFiles?.find(ef => ef.file_id === fileId)
+    return extracted ? 'completed' : 'processing'
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,11 +144,9 @@ export function DocumentPage() {
         {/* Header */}
         <div className="flex-shrink-0 flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold text-slate-100">Documents</h1>
-          {isTenant && (
-            <Button onClick={() => setIsUploadModalOpen(true)}>
-              Upload Files
-            </Button>
-          )}
+          <Button onClick={() => setIsUploadModalOpen(true)}>
+            Upload Files
+          </Button>
         </div>
         {/* Files List */}
         <div className="flex-1 min-h-0 overflow-y-auto">
@@ -208,16 +207,14 @@ export function DocumentPage() {
                       >
                         View
                       </Button>
-                      {isTenant && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleDelete(file.id)}
-                          loading={isDeletingFile}
-                        >
-                          Delete
-                        </Button>
-                      )}
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDelete(file.id)}
+                        loading={isDeletingFile}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -241,17 +238,14 @@ export function DocumentPage() {
                   No documents yet
                 </h3>
                 <p className="text-slate-400">
-                  {isTenant
-                    ? 'Upload files to get started with data processing'
-                    : 'No files uploaded for this tenant'}
+                  'Upload files to get started with data processing'
                 </p>
               </div>
             )}
           </div>
         </div>
         {/* Upload Modal */}
-        {isTenant && (
-          <Modal
+        <Modal
             isOpen={isUploadModalOpen}
             onClose={handleCloseUploadModal}
             title="Upload Files"
@@ -374,11 +368,10 @@ export function DocumentPage() {
               )}
             </div>
           </Modal>
-        )}{' '}
       </div>
 
       {/* Conditional Modal Rendering */}
-      {viewingFile && isTenant && (
+      {viewingFile && (
         <ViewPDFModal file={viewingFile} onClose={handleCloseModal} />
       )}
 

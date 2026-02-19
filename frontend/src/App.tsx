@@ -4,6 +4,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { DashboardPage } from './pages/DashboardPage' // NEW
 import { SearchPage } from './pages/SearchPage'       // NEW
 import { DataExplorerPage } from './pages/DataExplorerPage' // NEW
+import { FilesPage } from './pages/FilesPage'
+import { RelationshipsPage } from './pages/RelationshipsPage'
 import { AdminPage } from './pages/AdminPage'
 import { Layout } from './components/layout/Layout'
 import { ErrorTester } from './components/debug/ErrorTester'
@@ -17,48 +19,63 @@ function App() {
       <Route
         path="/"
         element={
-          // <ProtectedRoute>
+          <Layout>
             <DashboardPage />
-          // </ProtectedRoute>
+          </Layout>
         }
       />
       <Route
         path="/search"
         element={
-          // <ProtectedRoute>
+          <Layout>
             <SearchPage />
-          // </ProtectedRoute>
+          </Layout>
         }
       />
       <Route
         path="/explorer"
         element={
-          // <ProtectedRoute>
+          <Layout>
             <DataExplorerPage />
-          // </ProtectedRoute>
+          </Layout>
         }
       />
-      <Route path="/explorer" element={<DataExplorerPage />} />
       <Route
         path="/admin"
         element={
-          // <ProtectedRoute requireRole="admin">
+          <Layout>
             <AdminPage />
-          // </ProtectedRoute>
+          </Layout>
         }
       />
       {isDevelopment && (
         <Route
           path="/error-test"
           element={
-            // <ProtectedRoute>
-              <Layout>
-                <ErrorTester />
-              </Layout>
-            // </ProtectedRoute>
+            <Layout>
+              <ErrorTester />
+            </Layout>
           }
         />
+
       )}
+      <Route
+        path="/files"
+        element={
+            <Layout>
+                <FilesPage />
+            </Layout>
+        }
+      />
+      <Route
+        path="/relationships"
+        element={
+            <Layout>
+                <RelationshipsPage />
+            </Layout>
+        }
+      />
+
       <Route path="/*" element={<Navigate to="/" />} />
     </Routes>
   )

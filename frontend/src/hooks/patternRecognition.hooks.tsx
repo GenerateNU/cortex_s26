@@ -1,33 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '../config/axios.config'
-import { useAuth } from '../contexts/AuthContext'
+// import { useAuth } from '../contexts/AuthContext'
 import { QUERY_KEYS } from '../utils/constants'
 import type {
   Relationship,
-  RelationshipCreate,
 } from '../types/relationship.types'
 
 export const useAnalyzeRelationships = () => {
-  const { currentTenant, user } = useAuth()
+  // const { currentTenant, user } = useAuth()
   const queryClient = useQueryClient()
 
   const analyzeMutation = useMutation({
-    mutationFn: async (): Promise<RelationshipCreate[]> => {
-      if (!currentTenant) {
-        throw new Error('No tenant selected')
-      }
-      if (user?.role !== 'admin') {
-        throw new Error('Only admins can analyze relationships')
-      }
-
+    mutationFn: async (): Promise<Relationship[]> => {
       const { data } = await api.post(
-        `/pattern-recognition/analyze/${currentTenant.id}`
+        `/pattern-recognition/analyze/default`
       )
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.relationships.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.relationships.list('default'),
       })
     },
   })
@@ -40,23 +32,15 @@ export const useAnalyzeRelationships = () => {
 }
 
 export const useGetRelationships = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
 
   const query = useQuery({
-    queryKey: QUERY_KEYS.relationships.list(currentTenant?.id),
-    enabled: !!currentTenant?.id,
+    queryKey: QUERY_KEYS.relationships.list('default'),
+    enabled: true,
     queryFn: async (): Promise<Relationship[]> => {
       // Legacy hook - broken by schema change (v013).
       // Returning empty array to satisfy types until removed/refactored.
       return [] 
-      
-      /* 
-      if (!currentTenant) return []
-
-      const { data, error } = await supabase
-        .from('relationships')
-        .select(...)
-      */
     },
   })
 

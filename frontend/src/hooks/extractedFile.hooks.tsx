@@ -1,16 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '../contexts/AuthContext'
+
 import { QUERY_KEYS } from '../utils/constants'
 import { supabase } from '../config/supabase.config'
 import type { ExtractedFile } from '../types/extracted-file.types'
 
 export const useGetAllExtractedFiles = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
 
   const query = useQuery({
-    queryKey: QUERY_KEYS.extractedFiles.list(currentTenant?.id),
+    queryKey: QUERY_KEYS.extractedFiles.list('all'),
     queryFn: async (): Promise<ExtractedFile[]> => {
-      if (!currentTenant) return []
+      // if (!currentTenant) return []
 
       const { data, error } = await supabase
         .from('extracted_files')
@@ -25,7 +25,8 @@ export const useGetAllExtractedFiles = () => {
           }))
         : []
     },
-    enabled: !!currentTenant?.id,
+    // enabled: !!currentTenant?.id,
+    enabled: true,
   })
 
   return {
@@ -47,7 +48,7 @@ export const useGetExtractedFile = (sourceFileId: string | undefined) => {
       const { data, error } = await supabase
         .from('extracted_files')
         .select('*')
-        .eq('source_file_id', sourceFileId)
+        .eq('file_id', sourceFileId)
         .single()
 
       if (error) {

@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { useGetAllTenants } from '../../hooks/tenant.hooks'
-import { useTenantParam } from '../../hooks/useUrlState'
+// import { useGetAllTenants } from '../../hooks/tenant.hooks'
+// import { useTenantParam } from '../../hooks/useUrlState'
 
 const ROUTES = {
-  shared: [{ path: '/', label: 'Documents' }, { path: '/explorer', label: 'Data Explorer' }],
+  shared: [
+    { path: '/', label: 'Documents' }, 
+    { path: '/explorer', label: 'Data Explorer' },
+    { path: '/files', label: 'Files' },
+    { path: '/relationships', label: 'Relationships' }
+  ],
   adminOnly: [
     { path: '/admin', label: 'Admin' },
     // { path: '/cluster-visualization', label: 'Clusters' },
@@ -14,13 +18,14 @@ const ROUTES = {
 } as const
 
 export function Navbar() {
-  const { user, currentTenant, logout, switchTenant } = useAuth()
+  const { user, logout } = useAuth()
   const location = useLocation()
-  const [showTenantDropdown, setShowTenantDropdown] = useState(false)
-  const [tenantParam, setTenantParam] = useTenantParam()
+  // const [showTenantDropdown, setShowTenantDropdown] = useState(false)
+  // const [tenantParam, setTenantParam] = useTenantParam()
 
-  const { tenants = [] } = useGetAllTenants()
+  // const { tenants = [] } = useGetAllTenants()
 
+  /*
   useEffect(() => {
     if (user?.role === 'admin' && tenantParam && !currentTenant) {
       switchTenant(tenantParam)
@@ -32,6 +37,7 @@ export function Navbar() {
       setTenantParam(currentTenant.id)
     }
   }, [currentTenant, tenantParam, setTenantParam])
+  */
 
   const handleLogout = async () => {
     try {
@@ -41,11 +47,13 @@ export function Navbar() {
     }
   }
 
+  /*
   const handleTenantSwitch = async (tenantId: string) => {
     await switchTenant(tenantId)
     setTenantParam(tenantId)
     setShowTenantDropdown(false)
   }
+  */
 
   const getDisplayName = () => {
     if (!user) return ''
@@ -86,57 +94,11 @@ export function Navbar() {
           </div>
 
           {/* Center - Current Tenant Name */}
-          {currentTenant && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <h1 className="text-lg font-semibold text-slate-100 truncate max-w-xs">
-                {currentTenant.name}
-              </h1>
-            </div>
-          )}
+
 
           {/* Right Side - Tenant Selector, User, Logout */}
           <div className="flex items-center space-x-4">
-            {user.role === 'admin' && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowTenantDropdown(!showTenantDropdown)}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm text-slate-300 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                  <span>Switch Tenant</span>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                {showTenantDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-slate-700 rounded-lg border border-slate-600 shadow-lg py-1 z-10">
-                    {tenants.map(tenant => (
-                      <button
-                        key={tenant.id}
-                        onClick={() => handleTenantSwitch(tenant.id)}
-                        className={`flex items-center w-full px-4 py-2 text-sm text-left transition-colors ${
-                          currentTenant?.id === tenant.id
-                            ? 'bg-slate-600 text-slate-100'
-                            : 'text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        <span>{tenant.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+             {/* Tenant Switcher Removed */}
 
             <span className="text-sm text-slate-400">{getDisplayName()}</span>
 
@@ -165,3 +127,4 @@ export function Navbar() {
     </nav>
   )
 }
+

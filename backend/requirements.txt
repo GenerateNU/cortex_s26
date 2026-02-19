@@ -10,14 +10,14 @@ gotrue>=2.5.0
 python-dotenv==1.0.1
 
 # Data Validation
-pydantic[email]<2.0.0
+pydantic[email]>=2.0.0
 
 # Code Quality
 ruff==0.8.4
 
 # LLM Integration  
-litellm<1.0.0
-openai<1.0.0
+litellm>=1.52.0
+openai>=1.0.0
 
 # Data Analysis
 umap-learn==0.5.7

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '../contexts/AuthContext'
+
 import { QUERY_KEYS } from '../utils/constants'
 import type {
   Classification,
@@ -10,18 +10,18 @@ import api from '../config/axios.config'
 import { supabase } from '../config/supabase.config'
 
 export const useGetClusterVisualization = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
 
   const query = useQuery({
-    queryKey: QUERY_KEYS.classifications.visualization(currentTenant?.id),
+    queryKey: QUERY_KEYS.classifications.visualization('default'),
     queryFn: async (): Promise<VisualizationResponse> => {
       const { data } = await api.get(
-        `/classification/visualize_clustering/${currentTenant?.id}`
+        `/classification/visualize_clustering/default`
       )
 
       return data
     },
-    enabled: !!currentTenant?.id,
+    enabled: true,
   })
 
   return {
@@ -33,17 +33,17 @@ export const useGetClusterVisualization = () => {
 }
 
 export const useGetClassifications = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
 
   const query = useQuery({
-    queryKey: QUERY_KEYS.classifications.list(currentTenant?.id),
+    queryKey: QUERY_KEYS.classifications.list('default'),
     queryFn: async (): Promise<Classification[]> => {
-      if (!currentTenant) return []
+      // if (!currentTenant) return []
 
       const { data, error } = await supabase
         .from('classifications')
         .select('*')
-        .eq('tenant_id', currentTenant.id)
+        // .eq('tenant_id', currentTenant.id)
 
       if (error) throw error
 
@@ -55,7 +55,7 @@ export const useGetClassifications = () => {
           }))
         : []
     },
-    enabled: !!currentTenant?.id,
+    enabled: true,
   })
 
   return {
@@ -67,18 +67,14 @@ export const useGetClassifications = () => {
 }
 
 export const useClassifications = () => {
-  const { currentTenant } = useAuth()
+  // const { currentTenant } = useAuth()
   const queryClient = useQueryClient()
 
   const createClassificationsMutation = useMutation({
     mutationKey: ['create-classifications'],
     mutationFn: async (): Promise<Classification[]> => {
-      if (!currentTenant) {
-        throw new Error('No tenant selected')
-      }
-
       const { data } = await api.post(
-        `/classification/create_classifications/${currentTenant?.id}`
+        `/classification/create_classifications/default`
       )
 
       return data
@@ -91,7 +87,7 @@ export const useClassifications = () => {
       // Creating classifications doesn't directly change files,
       // but the backend might have unlinked files from deleted labels
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.files.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.files.list('all'),
       })
     },
   })
@@ -99,24 +95,20 @@ export const useClassifications = () => {
   const classifyFilesMutation = useMutation({
     mutationKey: ['classify-files'],
     mutationFn: async () => {
-      if (!currentTenant) {
-        throw new Error('No tenant selected')
-      }
-
-      await api.post(`/classification/classify_files/${currentTenant?.id}`)
+      await api.post(`/classification/classify_files/default`)
     },
     onSuccess: () => {
       // Invalidate files since their classification status changed
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.files.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.files.list('all'),
       })
       // Also invalidate extracted files as they contain classification info
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.extractedFiles.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.extractedFiles.list('all'),
       })
       // Refresh classifications list just in case
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.classifications.list(currentTenant?.id),
+        queryKey: QUERY_KEYS.classifications.list('default'),
       })
     },
   })

@@ -34,247 +34,64 @@ export type Database = {
   }
   public: {
     Tables: {
-      classifications: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          tenant_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          tenant_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          tenant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'classifications_tenant_id_fkey'
-            columns: ['tenant_id']
-            isOneToOne: false
-            referencedRelation: 'tenants'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       extracted_files: {
         Row: {
-          created_at: string | null
           embedding: string | null
-          extracted_data: Json | null
-          id: string
-          source_file_id: string
-          status: Database['public']['Enums']['extraction_status']
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          embedding?: string | null
-          extracted_data?: Json | null
-          id?: string
-          source_file_id: string
-          status: Database['public']['Enums']['extraction_status']
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          embedding?: string | null
-          extracted_data?: Json | null
-          id?: string
-          source_file_id?: string
-          status?: Database['public']['Enums']['extraction_status']
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'extracted_files_source_file_id_fkey'
-            columns: ['source_file_id']
-            isOneToOne: false
-            referencedRelation: 'file_uploads'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      file_uploads: {
-        Row: {
-          bucket_id: string
-          classification_id: string | null
-          created_at: string | null
-          id: string
-          name: string
-          tenant_id: string
-          type: Database['public']['Enums']['file_type']
-        }
-        Insert: {
-          bucket_id: string
-          classification_id?: string | null
-          created_at?: string | null
-          id?: string
-          name: string
-          tenant_id: string
-          type: Database['public']['Enums']['file_type']
-        }
-        Update: {
-          bucket_id?: string
-          classification_id?: string | null
-          created_at?: string | null
-          id?: string
-          name?: string
-          tenant_id?: string
-          type?: Database['public']['Enums']['file_type']
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'file_uploads_classification_id_fkey'
-            columns: ['classification_id']
-            isOneToOne: false
-            referencedRelation: 'classifications'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'file_uploads_tenant_id_fkey'
-            columns: ['tenant_id']
-            isOneToOne: false
-            referencedRelation: 'tenants'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      raw_files: {
-        Row: {
+          extracted_json: Json
           file_id: string
-          file_name: string
-          file_link: string
-          uploaded_at: string | null
+          file_name: string | null
+          file_type: Database["public"]["Enums"]["file_type_enum"] | null
+          processed_at: string | null
+          summary: string | null
         }
         Insert: {
-          file_id?: string
-          file_name: string
-          file_link: string
-          uploaded_at?: string | null
+          embedding?: string | null
+          extracted_json: Json
+          file_id: string
+          file_name?: string | null
+          file_type?: Database["public"]["Enums"]["file_type_enum"] | null
+          processed_at?: string | null
+          summary?: string | null
         }
         Update: {
+          embedding?: string | null
+          extracted_json?: Json
           file_id?: string
-          file_name?: string
-          file_link?: string
-          uploaded_at?: string | null
-        }
-        Relationships: []
-      }
-      migrations: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          sequence: number
-          sql: string
-          tenant_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          sequence: number
-          sql: string
-          tenant_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          sequence?: number
-          sql?: string
-          tenant_id?: string
+          file_name?: string | null
+          file_type?: Database["public"]["Enums"]["file_type_enum"] | null
+          processed_at?: string | null
+          summary?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'migrations_tenant_id_fkey'
-            columns: ['tenant_id']
-            isOneToOne: false
-            referencedRelation: 'tenants'
-            referencedColumns: ['id']
+            foreignKeyName: "extracted_files_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: true
+            referencedRelation: "raw_files"
+            referencedColumns: ["file_id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          created_at: string | null
-          first_name: string | null
-          id: string
-          last_name: string | null
-          role: Database['public']['Enums']['user_role']
-          tenant_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          first_name?: string | null
-          id: string
-          last_name?: string | null
-          role?: Database['public']['Enums']['user_role']
-          tenant_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          first_name?: string | null
-          id?: string
-          last_name?: string | null
-          role?: Database['public']['Enums']['user_role']
-          tenant_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'profiles_tenant_id_fkey'
-            columns: ['tenant_id']
-            isOneToOne: false
-            referencedRelation: 'tenants'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      relationships: {
-        Row: {
-          relationship_id: string
-          relationship_name: string
-          relationship_description: string
-        }
-        Insert: {
-          relationship_id?: string
-          relationship_name: string
-          relationship_description: string
-        }
-        Update: {
-          relationship_id?: string
-          relationship_name?: string
-          relationship_description?: string
-        }
-        Relationships: []
       }
       file_relationships: {
         Row: {
+          confidence_score: number | null
+          created_at: string | null
           file_id: string
           relationship_id: string
-          created_at: string | null
-          confidence_score: number | null
           source: string | null
         }
         Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
           file_id: string
           relationship_id: string
-          created_at?: string | null
-          confidence_score?: number | null
           source?: string | null
         }
         Update: {
+          confidence_score?: number | null
+          created_at?: string | null
           file_id?: string
           relationship_id?: string
-          created_at?: string | null
-          confidence_score?: number | null
           source?: string | null
         }
         Relationships: [
@@ -291,27 +108,45 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "relationships"
             referencedColumns: ["relationship_id"]
-          }
+          },
         ]
       }
-      tenants: {
+      raw_files: {
         Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
+          file_id: string
+          file_link: string
+          file_name: string
+          uploaded_at: string | null
         }
         Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
+          file_id?: string
+          file_link: string
+          file_name: string
+          uploaded_at?: string | null
         }
         Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
+          file_id?: string
+          file_link?: string
+          file_name?: string
+          uploaded_at?: string | null
+        }
+        Relationships: []
+      }
+      relationships: {
+        Row: {
+          relationship_description: string
+          relationship_id: string
+          relationship_name: string
+        }
+        Insert: {
+          relationship_description: string
+          relationship_id?: string
+          relationship_name: string
+        }
+        Update: {
+          relationship_description?: string
+          relationship_id?: string
+          relationship_name?: string
         }
         Relationships: []
       }
@@ -319,17 +154,65 @@ export type Database = {
         Row: {
           key: string
           updated_at: string | null
-          value: string
+          value: string | null
         }
         Insert: {
           key: string
           updated_at?: string | null
-          value: string
+          value?: string | null
         }
         Update: {
           key?: string
           updated_at?: string | null
-          value?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
+      classifications: {
+        Row: {
+          id: string
+          created_at: string
+          name: string
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          name: string
+          tenant_id?: string
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          name?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      migrations: {
+        Row: {
+          id: string
+          created_at: string
+          name: string
+          sql: string
+          sequence: number
+          tenant_id: string
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          name: string
+          sql: string
+          sequence: number
+          tenant_id?: string
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          name?: string
+          sql?: string
+          sequence?: number
+          tenant_id?: string
         }
         Relationships: []
       }
@@ -338,20 +221,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      exec_sql: { Args: { sql: string }; Returns: undefined }
-      execute_sql: { Args: { query: string }; Returns: undefined }
-      match_documents: {
+      match_extracted_files: {
         Args: {
-          filter_tenant_id?: string
-          match_count?: number
-          match_threshold?: number
+          match_count: number
+          match_threshold: number
           query_embedding: string
         }
         Returns: {
-          extracted_data: Json
-          id: string
+          extracted_json: Json
+          file_id: string
+          file_name: string
+          file_type: Database["public"]["Enums"]["file_type_enum"]
           similarity: number
-          source_file_id: string
+          summary: string
         }[]
       }
       update_webhook_config: {
@@ -360,10 +242,8 @@ export type Database = {
       }
     }
     Enums: {
-      extraction_status: 'queued' | 'processing' | 'completed' | 'failed'
-      file_type: 'pdf' | 'csv'
-      relationship_type: 'one-to-one' | 'one-to-many' | 'many-to-many'
-      user_role: 'tenant' | 'admin'
+      file_type_enum: "RFQ" | "PO" | "ProdSpec" | "Sales" | "Customers"
+      relationship_source_enum: "manual" | "ai_inference" | "filename-rule"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -371,33 +251,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -406,23 +286,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -431,23 +311,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -456,36 +336,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -494,10 +374,9 @@ export const Constants = {
   },
   public: {
     Enums: {
-      extraction_status: ['queued', 'processing', 'completed', 'failed'],
-      file_type: ['pdf', 'csv'],
-      relationship_type: ['one-to-one', 'one-to-many', 'many-to-many'],
-      user_role: ['tenant', 'admin'],
+      file_type_enum: ["RFQ", "PO", "ProdSpec", "Sales", "Customers"],
+      relationship_source_enum: ["manual", "ai_inference", "filename-rule"],
     },
   },
 } as const
+

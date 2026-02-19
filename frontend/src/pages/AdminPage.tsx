@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Layout } from '../components/layout/Layout'
 import { AdminStepper, type AdminStep } from '../components/admin/AdminStepper'
 import { ClassificationStep } from '../components/admin/steps/ClassificationStep'
 import { AssignClassificationsStep } from '../components/admin/steps/AssignClassificationsStep'
@@ -29,11 +28,10 @@ export function AdminPage() {
 
   const hasClassifications = (classifications?.length ?? 0) > 0
   const totalFiles = files?.length ?? 0
-  const classifiedFiles =
-    files?.filter(f => f.classification && f.classification !== 'Unclassified')
-      .length ?? 0
-  const hasExtractedFiles =
-    extractedFiles?.some(ef => ef.status === 'completed') ?? false
+  const classifiedFiles = 0 
+    // files?.filter(f => f.classification && f.classification !== 'Unclassified')
+    //   .length ?? 0
+  const hasExtractedFiles = (extractedFiles?.length ?? 0) > 0
   const hasRelationships = (relationships?.length ?? 0) > 0
   const hasMigrations = (migrations?.length ?? 0) > 0
   const hasConnectionUrl = !!connectionUrl
@@ -110,47 +108,45 @@ export function AdminPage() {
   }
 
   return (
-    <Layout>
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="flex-shrink-0 mb-4">
-          <AdminStepper
-            steps={steps}
-            onStepClick={index => {
-              const step = steps[index]
-              if (step.status !== 'disabled') {
-                setActiveStep(index)
-              }
-            }}
-          />
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
-          {activeStep === 0 && <ClassificationStep />}
-          {activeStep === 1 && <AssignClassificationsStep />}
-          {activeStep === 2 && <PatternRecognitionStep />}
-          {activeStep === 3 && <MigrationsStep />}
-          {activeStep === 4 && <LoadDataStep />}
-        </div>
-
-        <div className="flex-shrink-0 mt-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleBack}
-            disabled={activeStep === 0}
-            className="text-sm text-slate-400 disabled:text-slate-600"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={!canGoNext || activeStep === steps.length - 1}
-            className="rounded-md bg-primary-600 hover:bg-primary-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-700 disabled:text-slate-400 transition-colors"
-          >
-            Next
-          </button>
-        </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex-shrink-0 mb-4">
+        <AdminStepper
+          steps={steps}
+          onStepClick={index => {
+            const step = steps[index]
+            if (step.status !== 'disabled') {
+              setActiveStep(index)
+            }
+          }}
+        />
       </div>
-    </Layout>
+
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+        {activeStep === 0 && <ClassificationStep />}
+        {activeStep === 1 && <AssignClassificationsStep />}
+        {activeStep === 2 && <PatternRecognitionStep />}
+        {activeStep === 3 && <MigrationsStep />}
+        {activeStep === 4 && <LoadDataStep />}
+      </div>
+
+      <div className="flex-shrink-0 mt-4 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={handleBack}
+          disabled={activeStep === 0}
+          className="text-sm text-slate-400 disabled:text-slate-600"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={!canGoNext || activeStep === steps.length - 1}
+          className="rounded-md bg-primary-600 hover:bg-primary-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-700 disabled:text-slate-400 transition-colors"
+        >
+          Next
+        </button>
+      </div>
+    </div>
   )
 }

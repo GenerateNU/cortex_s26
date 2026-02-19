@@ -1,11 +1,13 @@
 import type { Json } from './database.types'
 
 export interface ExtractedFile {
-  id: string
-  status: 'queued' | 'processing' | 'completed' | 'failed'
-  source_file_id: string
-  extracted_data: Json
+  file_id: string
+  file_name: string | null
+  file_type: string | null // Using string to be compatible with enum generally, or we can use specific union type
+  summary: string | null
+  extracted_json: Json
   embedding: number[] | null
-  created_at: string | null
-  updated_at: string | null
+  processed_at: string | null
+  
+
 }
