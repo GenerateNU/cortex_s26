@@ -168,54 +168,6 @@ export type Database = {
         }
         Relationships: []
       }
-      classifications: {
-        Row: {
-          id: string
-          created_at: string
-          name: string
-          tenant_id: string
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          name: string
-          tenant_id?: string
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          name?: string
-          tenant_id?: string
-        }
-        Relationships: []
-      }
-      migrations: {
-        Row: {
-          id: string
-          created_at: string
-          name: string
-          sql: string
-          sequence: number
-          tenant_id: string
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          name: string
-          sql: string
-          sequence: number
-          tenant_id?: string
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          name?: string
-          sql?: string
-          sequence?: number
-          tenant_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
