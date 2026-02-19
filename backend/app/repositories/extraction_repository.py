@@ -1,6 +1,7 @@
 from uuid import UUID
+
 from supabase._async.client import AsyncClient
-import json
+
 
 class ExtractionRepository:
     def __init__(self, supabase: AsyncClient):
@@ -22,11 +23,14 @@ class ExtractionRepository:
             
         return result.data[0]["id"]
 
-    async def update_status(self, extracted_file_id: UUID, status: str, error: str = None) -> None:
+    async def update_status(
+        self, extracted_file_id: UUID, status: str, error: str = None
+    ) -> None:
         payload = {"status": status}
         if error:
             payload["extracted_data"] = {"error": error}
-        
+            payload["extracted_json"] = {"error": error}
+
         await (
             self.supabase.table("extracted_files")
             .update(payload)
@@ -34,16 +38,31 @@ class ExtractionRepository:
             .execute()
         )
 
-    async def update_extraction_result(self, extracted_file_id: UUID, extracted_data: dict, embedding: list[float]) -> None:
+    async def update_extraction_result(
+        self,
+        extracted_file_id: UUID,
+        extracted_data: dict,
+        embedding: list[float],
+        filename: str | None = None,
+        file_type: str | None = None,
+        llm_summary: str | None = None,
+    ) -> None:
+        payload = {
+            "status": "completed",
+            "extracted_data": extracted_data,
+            "extracted_json": extracted_data,
+            "embedding": embedding,
+        }
+        if filename:
+            payload["filename"] = filename
+        if file_type:
+            payload["file_type"] = file_type
+        if llm_summary:
+            payload["llm_summary"] = llm_summary
+
         await (
             self.supabase.table("extracted_files")
-            .update(
-                {
-                    "status": "completed",
-                    "extracted_data": extracted_data,
-                    "embedding": embedding,
-                }
-            )
+            .update(payload)
             .eq("id", str(extracted_file_id))
             .execute()
         )

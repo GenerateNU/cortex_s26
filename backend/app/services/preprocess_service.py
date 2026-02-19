@@ -53,8 +53,15 @@ class PreprocessService:
             print("PDF downloaded", flush=True)
 
             # Extract data
-            extraction_result = await self.pdf_strategy.extract_data(pdf_bytes, file_name)
-            extracted_json = extraction_result["result"]
+            extraction_result = await self.pdf_strategy.extract_data(
+                pdf_bytes, file_name, file_id=str(extracted_file_id)
+            )
+            extracted_json = extraction_result.get(
+                "extracted_json", extraction_result["result"]
+            )
+            llm_summary = extraction_result.get("llm_summary")
+            doc_file_type = extraction_result.get("file_type")
+            output_filename = extraction_result.get("filename", file_name)
             print("Data extracted", flush=True)
 
             # Generate embedding for whole document
@@ -63,7 +70,12 @@ class PreprocessService:
 
             # Update status to "complete" with extracted data and embedding
             await self.extraction_repo.update_extraction_result(
-                extracted_file_id, extracted_json, embedding_vector
+                extracted_file_id,
+                extracted_json,
+                embedding_vector,
+                filename=output_filename,
+                file_type=doc_file_type,
+                llm_summary=llm_summary,
             )
             print("Extraction stored", flush=True)
             
