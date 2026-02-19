@@ -3,6 +3,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { DocumentPage } from './pages/DocumentPage'
 import { AdminPage } from './pages/AdminPage'
+import { SearchPage } from './pages/SearchPage'
 // import { ClusterVisualizationPage } from './pages/ClusterVisualizationPage'
 import { Layout } from './components/layout/Layout'
 import { ErrorTester } from './components/debug/ErrorTester'
@@ -17,8 +18,14 @@ function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <DocumentPage />
+          <DocumentPage />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/search"
+        element={
+          <SearchPage />
         }
       />
       <Route
