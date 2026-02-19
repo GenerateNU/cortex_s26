@@ -4,6 +4,7 @@ from uuid import UUID
 from supabase._async.client import AsyncClient
 
 from app.repositories.extraction_repository import ExtractionRepository
+from app.services.extraction.csv_strategy import get_csv_extraction_strategy
 from app.services.extraction.pdf_strategy import get_pdf_extraction_strategy
 from app.services.pattern_recognition_service import PatternRecognitionService
 from app.services.preprocess_service import PreprocessService
@@ -18,7 +19,8 @@ class PreprocessingQueue:
         pdf_strategy = get_pdf_extraction_strategy()
         relationship_service = PatternRecognitionService(supabase)
 
-        self.service = PreprocessService(extraction_repo, pdf_strategy, relationship_service)
+        csv_strategy = get_csv_extraction_strategy()
+        self.service = PreprocessService(extraction_repo, pdf_strategy, csv_strategy, relationship_service)
 
     async def start_worker(self):
         """Start background worker"""

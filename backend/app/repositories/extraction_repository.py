@@ -50,7 +50,8 @@ class ExtractionRepository:
         self,
         file_id: UUID,
         extracted_data: dict, # wrapper containing file_type, summary, extracted_json
-        embedding: list[float]
+        embedding: list[float],
+        file_name: str
     ) -> None:
         """
         Updates the extraction result with the final data, summary, classification, and embedding.
@@ -66,6 +67,7 @@ class ExtractionRepository:
             self.supabase.table("extracted_files")
             .update(
                 {
+                    "file_name": file_name,
                     "file_type": file_type,
                     "summary": summary,
                     "extracted_json": extracted_json,
@@ -76,6 +78,40 @@ class ExtractionRepository:
             .eq("file_id", str(file_id))
             .execute()
         )
+
+    async def create_extraction_entry(
+        self,
+        file_id: UUID,
+        file_name: str,
+        extracted_data: dict,
+        embedding: list[float],
+        row_index: int = None
+    ) -> UUID:
+        """
+        Creates a NEW entry in extracted_files (used for CSV rows).
+        Returns the new ID (PK).
+        """
+        file_type = extracted_data.get("file_type")
+        summary = extracted_data.get("summary")
+        extracted_json = extracted_data.get("extracted_json", {})
+
+        response = await (
+            self.supabase.table("extracted_files")
+            .insert(
+                {
+                    "file_id": str(file_id),
+                    "file_name": file_name,
+                    "file_type": file_type,
+                    "summary": summary,
+                    "extracted_json": extracted_json,
+                    "embedding": embedding,
+                    "row_index": row_index,
+                    "processed_at": "now()",
+                }
+            )
+            .execute()
+        )
+        return UUID(response.data[0]["id"])
 
     async def get_extraction_with_file_info(self, file_id: UUID) -> dict[str, Any]:
         """

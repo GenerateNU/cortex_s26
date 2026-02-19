@@ -66,7 +66,7 @@ export function FilesPage() {
                 </tr>
               ) : (
                 filteredFiles.map((file) => (
-                  <tr key={file.file_id} className="hover:bg-slate-750 transition-colors">
+                  <tr key={file.id} className="hover:bg-slate-750 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-slate-200">{file.file_name || 'Untitled'}</div>
                       <div className="text-xs text-slate-500 font-mono">{file.file_id.slice(0, 8)}...</div>

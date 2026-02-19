@@ -41,7 +41,9 @@ export type Database = {
           file_id: string
           file_name: string | null
           file_type: Database["public"]["Enums"]["file_type_enum"] | null
+          id: string
           processed_at: string | null
+          row_index: number | null
           summary: string | null
         }
         Insert: {
@@ -50,7 +52,9 @@ export type Database = {
           file_id: string
           file_name?: string | null
           file_type?: Database["public"]["Enums"]["file_type_enum"] | null
+          id?: string
           processed_at?: string | null
+          row_index?: number | null
           summary?: string | null
         }
         Update: {
@@ -59,14 +63,16 @@ export type Database = {
           file_id?: string
           file_name?: string | null
           file_type?: Database["public"]["Enums"]["file_type_enum"] | null
+          id?: string
           processed_at?: string | null
+          row_index?: number | null
           summary?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "extracted_files_file_id_fkey"
             columns: ["file_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "raw_files"
             referencedColumns: ["file_id"]
           },

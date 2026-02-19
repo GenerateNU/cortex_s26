@@ -13,20 +13,16 @@ export function DataExplorerPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
   // Derived state
-  const filteredFiles = useMemo(() => {
-    if (!files) return []
-    return files.filter(f => 
-      f.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [files, searchTerm])
 
-  const selectedFile = useMemo(() => {
-    return files?.find(f => f.id === selectedFileId)
-  }, [files, selectedFileId])
 
   const selectedExtraction = useMemo(() => {
-    return extractedFiles?.find(ef => ef.file_id === selectedFileId)
+    return extractedFiles?.find(ef => ef.id === selectedFileId)
   }, [extractedFiles, selectedFileId])
+
+  const selectedFile = useMemo(() => {
+    if (!selectedExtraction) return null
+    return files?.find(f => f.id === selectedExtraction.file_id)
+  }, [files, selectedExtraction])
 
   // interface ExtractedContent removed
 
@@ -34,20 +30,20 @@ export function DataExplorerPage() {
 
   return (
     <div className="flex h-full min-h-0 gap-4">
-      {/* Left Sidebar: File List */}
+      {/* Left Sidebar: Extracted File List */}
       <div className="w-1/3 bg-slate-800 rounded-xl border border-slate-700 flex flex-col min-h-0">
         <div className="p-4 border-b border-slate-700">
           <h2 className="text-lg font-semibold text-slate-100 mb-2">Explorer</h2>
           <input 
             type="text" 
-            placeholder="Search files..." 
+            placeholder="Search documents..." 
             className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {filteredFiles.map(file => (
+          {extractedFiles?.filter(f => (f.file_name || '').toLowerCase().includes(searchTerm.toLowerCase())).map(file => (
             <div 
               key={file.id}
               onClick={() => setSelectedFileId(file.id)}
@@ -57,9 +53,9 @@ export function DataExplorerPage() {
                   : 'hover:bg-slate-700 text-slate-300'
               }`}
             >
-              <div className="font-medium truncate">{file.name}</div>
+              <div className="font-medium truncate">{file.file_name || 'Untitled'}</div>
               <div className="text-xs opacity-70 truncate">
-                {file.created_at ? new Date(file.created_at).toLocaleDateString() : 'N/A'}
+                {file.processed_at ? new Date(file.processed_at).toLocaleDateString() : 'N/A'}
               </div>
             </div>
           ))}

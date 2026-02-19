@@ -255,6 +255,7 @@ export function DocumentPage() {
                 <>
                   <input
                     type="file"
+                    accept=".pdf,.csv"
                     multiple
                     onChange={handleFileSelect}
                     className="block w-full text-sm text-slate-300

@@ -74,7 +74,7 @@ export const FileUpload: React.FC<{ onUploadComplete: () => void }> = ({ onUploa
         type="file"
         id="file-upload"
         className="hidden"
-        accept=".pdf"
+        accept=".pdf,.csv"
         onChange={handleFileUpload}
         disabled={uploading}
       />
@@ -86,7 +86,7 @@ export const FileUpload: React.FC<{ onUploadComplete: () => void }> = ({ onUploa
           <span className="text-blue-600 font-semibold">Uploading & Processing...</span>
         ) : (
           <div>
-            <span className="text-gray-600 text-lg">Click to Upload PDF</span>
+            <span className="text-gray-600 text-lg">Click to Upload PDF or CSV</span>
             <p className="text-sm text-gray-400 mt-2">Analyzes content, type, and relationships automatically.</p>
           </div>
         )}
