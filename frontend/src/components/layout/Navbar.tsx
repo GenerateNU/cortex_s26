@@ -8,10 +8,11 @@ const ROUTES = {
     { path: '/', label: 'Documents' }, 
     { path: '/explorer', label: 'Data Explorer' },
     { path: '/files', label: 'Files' },
-    { path: '/relationships', label: 'Relationships' }
+    { path: '/relationships', label: 'Relationships' },
+    { path: '/search', label: 'Search' }
   ],
   adminOnly: [
-    { path: '/admin', label: 'Admin' },
+    // { path: '/admin', label: 'Admin' },
     // { path: '/cluster-visualization', label: 'Clusters' },
   ],
   tenantOnly: [],
@@ -73,7 +74,7 @@ export function Navbar() {
   if (!user) return null
 
   return (
-    <nav className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700">
+    <nav className="sticky top-0 z-50 bg-[#09090b]/80 backdrop-blur-md border-b border-zinc-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex justify-between h-16">
           {/* Left Side - Navigation Links */}
@@ -82,10 +83,10 @@ export function Navbar() {
               <Link
                 key={route.path}
                 to={route.path}
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-bold transition-all ${
                   location.pathname === route.path
-                    ? 'border-primary-500 text-primary-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                    ? 'border-purple-500 text-purple-400'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
                 }`}
               >
                 {route.label}
@@ -100,11 +101,11 @@ export function Navbar() {
           <div className="flex items-center space-x-4">
              {/* Tenant Switcher Removed */}
 
-            <span className="text-sm text-slate-400">{getDisplayName()}</span>
+            <span className="text-sm font-medium text-zinc-400 bg-zinc-900/50 px-3 py-1.5 rounded-full border border-zinc-800/50">{getDisplayName()}</span>
 
             <button
               onClick={handleLogout}
-              className="p-2 text-slate-400 hover:text-slate-300 hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-2 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg transition-colors"
               aria-label="Logout"
             >
               <svg

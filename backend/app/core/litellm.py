@@ -74,21 +74,31 @@ class LLMClient:
             Single 1536-dim vector or list of 1536-dim vectors
 
         """
+        import asyncio
+        from litellm.exceptions import RateLimitError
+        
         embed_model = model.value if model else self.embedding_model.value
 
         # Ensure input is a list
         inputs = [input_text] if isinstance(input_text, str) else input_text
 
         # Generate embeddings with fixed dimensions
-        response: Any = await aembedding(
-            model=embed_model, input=inputs, dimensions=768
-        )
-
-        # Extract embeddings
-        embeddings = [data['embedding'] for data in response['data']]
-
-        # Return single embedding if single input
-        return embeddings[0] if isinstance(input_text, str) else embeddings
+        for attempt in range(10): # Retry up to 10 times to handle 5 RPM limit gracefully
+            try:
+                response: Any = await aembedding(
+                    model=embed_model, input=inputs, dimensions=768
+                )
+                
+                # Extract embeddings
+                embeddings = [data['embedding'] for data in response['data']]
+        
+                # Return single embedding if single input
+                return embeddings[0] if isinstance(input_text, str) else embeddings
+            except RateLimitError as e:
+                if attempt == 9:
+                    raise e
+                # The free tier is 5 requests per minute.
+                await asyncio.sleep(15)
 
     async def chat(
         self,
@@ -109,6 +119,9 @@ class LLMClient:
         Returns:
             ModelResponse with completion
         """
+        import asyncio
+        from litellm.exceptions import RateLimitError
+        
         messages = []
 
         # Add system prompt if set
@@ -133,9 +146,17 @@ class LLMClient:
         else:
             messages.append({"role": "user", "content": content})
 
-        return await acompletion(
-            model=self.model.value,
-            messages=messages,
-            max_tokens=max_tokens,
-            response_format={"type": "json_object"} if json_response else None,
-        )
+        for attempt in range(10): # Retry up to 10 times to handle 5 RPM limit gracefully
+            try:
+                return await acompletion(
+                    model=self.model.value,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    response_format={"type": "json_object"} if json_response else None,
+                )
+            except RateLimitError as e:
+                if attempt == 9:
+                    raise e
+                # The free tier is 5 requests per minute, meaning ~1 request every 12 seconds.
+                # If we hit the limit, wait 15 seconds to let the quota refresh before trying again.
+                await asyncio.sleep(15)

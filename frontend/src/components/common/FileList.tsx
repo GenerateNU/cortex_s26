@@ -87,36 +87,43 @@ export const FileList: React.FC = () => {
     if (loading && files.length === 0) return <div>Loading documents...</div>;
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
             {files.map((file) => (
-                <div key={file.file_id} className="p-4 bg-white shadow rounded-lg border border-gray-200">
+                <div key={file.file_id} className="p-4 bg-zinc-900 shadow-lg rounded-xl border border-zinc-800 hover:border-zinc-700 transition-colors">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900">{file.file_name}</h3>
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
+                            <h3 className="text-lg font-bold text-zinc-100">{file.file_name}</h3>
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold mt-1 border ${
                                 getFileTypeColor(file.file_type)
                             }`}>
                                 {file.file_type || 'Processing...'}
                             </span>
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-zinc-500 font-medium bg-zinc-800 px-2 py-1 rounded">
                             {new Date(file.uploaded_at).toLocaleDateString()}
                         </div>
                     </div>
                     
-                    <p className="mt-2 text-sm text-gray-600">
+                    <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
                         {file.summary || 'Generating summary...'}
                     </p>
 
                     {/* Relationships Section */}
                     {file.relationships.length > 0 && (
-                        <div className="mt-3">
-                            <h4 className="text-xs font-uppercase text-gray-400 mb-1">Detected Relationships</h4>
+                        <div className="mt-4 pt-4 border-t border-zinc-800">
+                            <h4 className="text-xs font-semibold tracking-wider uppercase text-zinc-500 mb-2 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                Detected Relationships
+                            </h4>
                             <div className="flex flex-wrap gap-2">
                                 {file.relationships.map((rel, idx) => (
-                                    <div key={idx} className="flex items-center px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs border border-indigo-100" title={rel.description}>
-                                        <span className="font-medium mr-1">{rel.name}</span>
-                                        <span className="text-indigo-400">({(rel.score * 100).toFixed(0)}%)</span>
+                                    <div key={idx} className="flex items-center px-2 py-1 bg-purple-900/40 text-purple-200 rounded-md text-xs border border-purple-500/30 backdrop-blur-sm" title={rel.description}>
+                                        <span className="font-medium mr-1.5">{rel.name}</span>
+                                        <span className="text-purple-400 font-mono text-[10px] bg-purple-950/50 px-1 rounded">
+                                            {(rel.score * 100).toFixed(0)}%
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -130,11 +137,11 @@ export const FileList: React.FC = () => {
 
 const getFileTypeColor = (type?: string) => {
     switch (type) {
-        case 'PO': return 'bg-blue-100 text-blue-800';
-        case 'RFQ': return 'bg-purple-100 text-purple-800';
-        case 'ProdSpec': return 'bg-green-100 text-green-800';
-        case 'Sales': return 'bg-yellow-100 text-yellow-800';
-        case 'Customers': return 'bg-pink-100 text-pink-800';
-        default: return 'bg-gray-100 text-gray-800';
+        case 'PO': return 'bg-blue-900/30 text-blue-300 border-blue-900/50';
+        case 'RFQ': return 'bg-purple-900/30 text-purple-300 border-purple-900/50';
+        case 'ProdSpec': return 'bg-emerald-900/30 text-emerald-300 border-emerald-900/50';
+        case 'Sales': return 'bg-amber-900/30 text-amber-300 border-amber-900/50';
+        case 'Customers': return 'bg-pink-900/30 text-pink-300 border-pink-900/50';
+        default: return 'bg-zinc-800 text-zinc-300 border-zinc-700';
     }
 };

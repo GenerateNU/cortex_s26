@@ -1,9 +1,17 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-primary-50: #1e293b;
-  --color-primary-500: #6366f1;
-  --color-primary-900: #a5b4fc;
+  --color-purple-50: #f6f5f9;
+  --color-purple-100: #edeaf4;
+  --color-purple-200: #d6cee3;
+  --color-purple-300: #b9afd0;
+  --color-purple-400: #988abc;
+  --color-purple-500: #7a68a9;
+  --color-purple-600: #5d459d;
+  --color-purple-700: #49357b;
+  --color-purple-800: #37285d;
+  --color-purple-900: #251b3f;
+  --color-purple-950: #130e21;
 
   /* Fix spacing scale */
   --spacing-1: 0.25rem;
@@ -25,15 +33,18 @@ body {
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   line-height: 1.6;
-  background-color: #0f172a;
-  color: #e2e8f0;
+  background-color: #09090b;
+  /* zinc-950 / almost black */
+  color: #f4f4f5;
+  /* zinc-100 / almost white */
   margin: 0;
   overflow: hidden;
 }
 
 /* Global scrollbar styling */
 * {
-  scrollbar-width: thin; /* Firefox */
+  scrollbar-width: thin;
+  /* Firefox */
   /* thumb, track - darker thumb by default, transparent track */
   scrollbar-color: #64748b transparent;
 }
@@ -44,7 +55,8 @@ body {
 }
 
 *::-webkit-scrollbar-track {
-  background: transparent; /* removes visible gutter */
+  background: transparent;
+  /* removes visible gutter */
 }
 
 *::-webkit-scrollbar-thumb {

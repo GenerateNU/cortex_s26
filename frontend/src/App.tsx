@@ -27,9 +27,7 @@ function App() {
       <Route
         path="/search"
         element={
-          <Layout>
             <SearchPage />
-          </Layout>
         }
       />
       <Route
