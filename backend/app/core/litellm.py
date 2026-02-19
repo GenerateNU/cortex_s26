@@ -2,8 +2,9 @@ import base64
 import os
 from enum import Enum
 
+from typing import Any
 from litellm import acompletion, aembedding
-from litellm.types.utils import EmbeddingResponse, ModelResponse
+# from litellm.types.utils import EmbeddingResponse, ModelResponse
 
 
 class ModelType(Enum):
@@ -17,7 +18,7 @@ class EmbeddingModelType(Enum):
     """Available embedding models."""
 
     # Gemini models (768 default, supports up to 3072)
-    GEMINI_TEXT_EMBEDDING = "gemini/text-embedding-004"
+    GEMINI_TEXT_EMBEDDING = "gemini/gemini-embedding-001"
 
     # OpenAI models
     OPENAI_SMALL = "text-embedding-3-small"  # 1536 dimensions
@@ -78,12 +79,12 @@ class LLMClient:
         inputs = [input_text] if isinstance(input_text, str) else input_text
 
         # Generate embeddings with fixed dimensions
-        response: EmbeddingResponse = await aembedding(
+        response: Any = await aembedding(
             model=embed_model, input=inputs, dimensions=768
         )
 
         # Extract embeddings
-        embeddings = [data.embedding for data in response.data]
+        embeddings = [data['embedding'] for data in response['data']]
 
         # Return single embedding if single input
         return embeddings[0] if isinstance(input_text, str) else embeddings
@@ -94,7 +95,7 @@ class LLMClient:
         pdf_bytes: bytes | None = None,
         max_tokens: int | None = None,
         json_response: bool = False,
-    ) -> ModelResponse:
+    ) -> Any:
         """
         Send a completion request.
 

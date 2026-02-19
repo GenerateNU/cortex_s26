@@ -1,5 +1,6 @@
 from supabase._async.client import AsyncClient
 
+
 class SchemaRepository:
     def __init__(self, supabase: AsyncClient):
         self.supabase = supabase

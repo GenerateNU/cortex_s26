@@ -1,6 +1,8 @@
 import json
 import os
+
 from app.core.litellm import LLMClient, ModelType
+
 
 class PdfExtractionStrategy:
     def __init__(self):
@@ -24,9 +26,24 @@ class PdfExtractionStrategy:
             else ModelType.GEMINI_PRO
         ),
     ) -> dict:
+        """
+        Extracts structured data, classification, and summary from PDF.
+        Returns: { "file_type": ..., "summary": ..., "extracted_json": ... }
+        """
         self.model.set_model(llm_model)
+
+        # Updated Prompt for Classification, Summary, and Extraction
+        prompt = (
+            "Analyze this document. Return a JSON object with exactly these 3 keys:\n"
+            "1. 'file_type': Must be one of ['RFQ', 'PO', 'ProdSpec', 'Sales', 'Customers']. "
+            "Infer based on content.\n"
+            "2. 'summary': A 1-2 sentence summary of the document.\n"
+            "3. 'extracted_json': The structured data extracted from the document (tables, specs, dates, amounts).\n"
+            "Do not return markdown formatting, just the raw JSON."
+        )
+
         response = await self.model.chat(
-            "Extract tables", pdf_bytes=pdf_bytes, json_response=True
+            prompt, pdf_bytes=pdf_bytes, json_response=True
         )
 
         text = response.choices[0].message.content.strip()
@@ -34,14 +51,28 @@ class PdfExtractionStrategy:
         print("JSON response received", flush=True)
         try:
             data = json.loads(text)
+
+            # Validate/Normalize keys
+            if "extracted_json" not in data:
+                 # Fallback if model puts data at root
+                 if "data" in data:
+                     data["extracted_json"] = data.pop("data")
+                 else:
+                     # Assess if the whole object is the data (minus type/summary)
+                     data["extracted_json"] = {k:v for k,v in data.items() if k not in ["file_type", "summary"]}
+
         except Exception:
-            data = {"error": "LLM did not return JSON"}
+            data = {
+                "file_type": "ProdSpec", # Default fallback
+                "summary": "Extraction failed.",
+                "extracted_json": {"error": "LLM did not return JSON"}
+            }
 
         print("JSON response parsed", flush=True)
 
         return {
             "file_name": file_name,
-            "result": data,
+            "result": data, # Contains file_type, summary, extracted_json
             "meta": {"llm_model": llm_model.value, "source": "gemini-pdf-only"},
         }
 

@@ -1,32 +1,22 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import get_current_admin
-from app.schemas.preprocess_schemas import PreprocessSuccessResponse
-from app.services.preprocess_service import PreprocessService, get_preprocess_service
 from app.services.extraction.preprocessing_queue import PreprocessingQueue, get_queue
 
-router = APIRouter(prefix="/preprocess", tags=["Preprocess"])
+router = APIRouter(prefix="/preprocess", tags=["preprocess"])
 
-
-@router.post(
-    "/retry_extraction/{file_upload_id}",
-    response_model=PreprocessSuccessResponse,
-)
-async def handle_extract_webhook(
-    file_upload_id: UUID,
-    preprocess_service: PreprocessService = Depends(get_preprocess_service),
-    preprocessing_queue: PreprocessingQueue = Depends(get_queue),
-    admin=Depends(get_current_admin),
-) -> PreprocessSuccessResponse:
-    """Webhook triggered on PDF uploads"""
-
-    await preprocess_service.delete_previous_extraction(file_upload_id)
-
-    # Enqueue instead of processing
-    extracted_file_id = await preprocessing_queue.enqueue(file_upload_id)
-
-    return PreprocessSuccessResponse(
-        status="queued", file_upload_id=file_upload_id, extraction_id=extracted_file_id
-    )
+@router.post("/{file_id}")
+async def preprocess_file(
+    file_id: UUID,
+    queue: PreprocessingQueue = Depends(get_queue)
+):
+    """
+    Queue a file for preprocessing (Extraction).
+    """
+    try:
+        # Enqueue the file_id directly
+        task_id = await queue.enqueue(file_id)
+        return {"message": "File queued for preprocessing", "task_id": task_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

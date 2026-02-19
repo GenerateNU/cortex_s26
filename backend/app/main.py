@@ -1,11 +1,23 @@
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
+
+# Load env vars from .env file (looks in current or parent directories)
+load_dotenv()
+
+# Fix for local dev: Map VITE_SUPABASE_URL to SUPABASE_URL if not set
+if not os.getenv("SUPABASE_URL") and os.getenv("VITE_SUPABASE_URL"):
+    os.environ["SUPABASE_URL"] = os.getenv("VITE_SUPABASE_URL")
+
+# Fix for local dev: Map SUPABASE_SERVICE_ROLE_KEY if differently named
+if not os.getenv("SUPABASE_SERVICE_ROLE_KEY") and os.getenv("BACKEND_SUPABASE_SERVICE_ROLE_KEY"):
+    os.environ["SUPABASE_SERVICE_ROLE_KEY"] = os.getenv("BACKEND_SUPABASE_SERVICE_ROLE_KEY")
+
 
 from app.api import api_router
-from app.core.seed_data import seed_database
 from app.core.supabase import get_async_supabase
 from app.core.webhooks import configure_webhooks
 from app.services.extraction.preprocessing_queue import init_queue
@@ -24,9 +36,6 @@ async def lifespan(app: FastAPI):
 
     await init_queue(supabase)
 
-    if os.getenv("ENVIRONMENT") == "development":
-        await seed_database(supabase)
-
     yield
     # Shutdown (if needed)
 
@@ -41,10 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.routes import product_routes
-
 app.include_router(api_router)
-app.include_router(product_routes.router)
 
 
 @app.get("/")

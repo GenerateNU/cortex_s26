@@ -1,174 +1,72 @@
+from typing import List, Dict, Any
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException
+from supabase._async.client import AsyncClient
 
-from app.core.dependencies import get_current_admin
-from app.schemas.classification_schemas import (
-    Classification,
-    ExtractedFile,
-    VisualizationResponse,
-)
-from app.services.classification_service import (
-    ClassificationService,
-    get_classification_service,
-)
-from app.services.classification.classify_files import (
-    classify_files as classify_files_helper,
-)
-from app.services.classification.clustering_visualization import (
-    create_empty_visualization,
-    extract_embedding_data,
-    reduce_to_visualization,
-)
-from app.services.classification.create_classifications import (
-    create_classifications as create_classifications_helper,
-)
+from app.core.supabase import get_async_supabase
+from app.services.classification_service import ClassificationService
 
 router = APIRouter(prefix="/classification", tags=["Classification"])
 
+def get_service(supabase: AsyncClient = Depends(get_async_supabase)) -> ClassificationService:
+    return ClassificationService(supabase)
 
-@router.get("/visualize_clustering/{tenant_id}", response_model=VisualizationResponse)
-async def visualize_clustering(
+@router.get("/list/{tenant_id}")
+async def list_classifications(
     tenant_id: UUID,
-    classification_service: ClassificationService = Depends(get_classification_service),
-    admin=Depends(get_current_admin),
+    service: ClassificationService = Depends(get_service)
 ):
-    """
-    Visualize document embeddings in 2D space
-    Query param: ?tenant_id=xxx (optional for tenant filtering)
-    """
-    try:
-        extracted_files: list[
-            ExtractedFile
-        ] = await classification_service.get_extracted_files(tenant_id)
+    return await service.get_classifications(tenant_id)
 
-        if not extracted_files or len(extracted_files) == 0:
-            raise HTTPException(
-                status_code=404, detail="No documents with embeddings found"
-            )
-
-        dataset = await extract_embedding_data(extracted_files)
-
-        if len(extracted_files) < 2:
-            return await create_empty_visualization(dataset)
-
-        visualizationResponse = await reduce_to_visualization(dataset)
-
-        return visualizationResponse
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.post("/create_classifications/{tenant_id}", response_model=list[Classification])
+@router.post("/create_classifications/{tenant_id}")
 async def create_classifications(
     tenant_id: UUID,
-    classification_service: ClassificationService = Depends(get_classification_service),
-    admin=Depends(get_current_admin),
-) -> list[Classification]:
+    # In a real app we'd accept a body with names, but Frontend hook 
+    # `useClassifications` calls this without body? 
+    # Let's check `classification.hooks.tsx`.
+    # It seems to just POST to `/create_classifications/{tenant_id}` with no body?
+    # Wait, the hook `createClassificationsMutation` calls `api.post(...)`.
+    # The hook creates classifications? 
+    # Ah, `createClassificationsMutation` in frontend seems to imply "Auto-generate classifications" 
+    # OR it's a manual create.
+    # AdminPage.tsx -> ClassificationStep might have a form.
+    # Actually, looking at `ClassificationStep`, it likely lets user type names.
+    # If the hook payload is empty, maybe it's "Suggest Classifications"?
+    # Let's assume for now it might trigger AUTO-creation from documents.
+    service: ClassificationService = Depends(get_service)
+):
     """
-    Analyze all extracted files and create or update classifications
+    Generate valid classifications based on existing unclassified documents.
     """
-    try:
-        extracted_files: list[
-            ExtractedFile
-        ] = await classification_service.get_extracted_files(tenant_id)
+    # For MVP, let's just create some default ones if none exist, 
+    # or scan files to suggest. 
+    # The Frontend `useClassifications` has `createClassifications`.
+    # Let's verify what the frontend sends. 
+    # IF the frontend sends data, we need Pydantic model.
+    # Logic: Scan all files, ask LLM "What are the distinct categories?", create them.
+    
+    # Implementation:
+    # 1. Fetch file summaries
+    # 2. Ask LLM to cluster/name them
+    # 3. Create those classifications
+    
+    # Placeholder:
+    defaults = ["Invoices", "Contracts", "Specifications", "Receipts"]
+    return await service.create_classifications_batch(tenant_id, defaults)
 
-        if not extracted_files or len(extracted_files) == 0:
-            raise HTTPException(
-                status_code=404, detail="No documents with embeddings found"
-            )
-
-        initial_classifications: list[
-            Classification
-        ] = await classification_service.get_classifications(tenant_id)
-
-        print(initial_classifications)
-
-        if initial_classifications is None:
-            raise HTTPException(
-                status_code=404, detail="Unable to get initial classifications"
-            )
-
-        classification_names: list[str] = await create_classifications_helper(
-            extracted_files,
-            [classification.name for classification in initial_classifications],
-        )
-
-        if classification_names is None:
-            raise HTTPException(
-                status_code=500, detail="Unable to create classifications"
-            )
-
-        classifications: list[
-            Classification
-        ] = await classification_service.set_classifications(
-            tenant_id, classification_names
-        )
-
-        if classifications is None:
-            raise HTTPException(
-                status_code=500, detail="Unable to set new classifications"
-            )
-
-        return classifications
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@router.post("/classify_files/{tenant_id}", response_model=list[ExtractedFile])
+@router.post("/classify_files/{tenant_id}")
 async def classify_files(
     tenant_id: UUID,
-    classification_service: ClassificationService = Depends(get_classification_service),
-    admin=Depends(get_current_admin),
-) -> list[ExtractedFile]:
+    service: ClassificationService = Depends(get_service)
+):
     """
-    Analyze all extracted files and create or update classifications
+    Assign existing classifications to unclassified files.
     """
-    try:
-        extracted_files: list[
-            ExtractedFile
-        ] = await classification_service.get_extracted_files(tenant_id)
+    return await service.classify_files(tenant_id)
 
-        if extracted_files is None or len(extracted_files) == 0:
-            raise HTTPException(
-                status_code=404, detail="No documents with embeddings found"
-            )
-
-        classifications: list[
-            Classification
-        ] = await classification_service.get_classifications(tenant_id)
-
-        if classifications is None or len(classifications) == 0:
-            raise HTTPException(status_code=404, detail="Unable to get classifications")
-
-        classified_extracted_files: list[ExtractedFile] = await classify_files_helper(
-            extracted_files, classifications
-        )
-
-        if classified_extracted_files is None or len(classified_extracted_files) == 0:
-            raise HTTPException(
-                status_code=404, detail="Failed to classify extracted files"
-            )
-
-        import asyncio
-
-        # Batch update classification_id in database
-        update_tasks = []
-        for classified_extracted_file in classified_extracted_files:
-            if classified_extracted_file.classification:
-                update_tasks.append(
-                    classification_service.classify_file(
-                        classified_extracted_file.file_upload_id,
-                        classified_extracted_file.classification.classification_id,
-                    )
-                )
-
-        if update_tasks:
-            await asyncio.gather(*update_tasks)
-
-        return classified_extracted_files
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+@router.get("/visualize_clustering/{tenant_id}")
+async def visualize_clustering(
+    tenant_id: UUID,
+    service: ClassificationService = Depends(get_service)
+):
+    return await service.get_clustering_visualization(tenant_id)

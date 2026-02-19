@@ -5,7 +5,7 @@ import { useGetAllTenants } from '../../hooks/tenant.hooks'
 import { useTenantParam } from '../../hooks/useUrlState'
 
 const ROUTES = {
-  shared: [{ path: '/', label: 'Documents' }],
+  shared: [{ path: '/', label: 'Documents' }, { path: '/explorer', label: 'Data Explorer' }],
   adminOnly: [
     { path: '/admin', label: 'Admin' },
     // { path: '/cluster-visualization', label: 'Clusters' },

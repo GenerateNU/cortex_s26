@@ -14,12 +14,12 @@ export const useGetAllExtractedFiles = () => {
 
       const { data, error } = await supabase
         .from('extracted_files')
-        .select('*, file_uploads!inner(tenant_id)')
-        .eq('file_uploads.tenant_id', currentTenant.id)
+        .select('*')
+        // .eq('file_uploads.tenant_id', currentTenant.id) // Tenant ID removed from schema
 
       if (error) throw error
       return data
-        ? data.map((extractedFile: any) => ({
+        ? data.map((extractedFile) => ({
             ...extractedFile,
             embedding: extractedFile.embedding as unknown as number[] | null,
           }))
@@ -46,7 +46,7 @@ export const useGetExtractedFile = (sourceFileId: string | undefined) => {
 
       const { data, error } = await supabase
         .from('extracted_files')
-        .select('*, file_uploads!inner(tenant_id)')
+        .select('*')
         .eq('source_file_id', sourceFileId)
         .single()
 

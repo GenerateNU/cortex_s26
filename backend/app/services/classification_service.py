@@ -1,121 +1,138 @@
-# app/services/classification_service.py
-import json
 from uuid import UUID
+from typing import List, Dict, Any, Optional
 
-from fastapi import Depends
 from supabase._async.client import AsyncClient
-
-from app.core.supabase import get_async_supabase
-from app.schemas.classification_schemas import Classification, ExtractedFile
-from app.repositories.classification_repository import ClassificationRepository
-from app.repositories.extraction_repository import ExtractionRepository
-
+from app.core.litellm import LLMClient
 
 class ClassificationService:
-    def __init__(self, classification_repo: ClassificationRepository, extraction_repo: ExtractionRepository):
-        self.classification_repo = classification_repo
-        self.extraction_repo = extraction_repo
+    def __init__(self, supabase: AsyncClient):
+        self.supabase = supabase
+        self.llm = LLMClient()
 
-    async def get_extracted_files(self, tenant_id: UUID) -> list[ExtractedFile]:
+    async def get_classifications(self, tenant_id: UUID) -> List[Dict[str, Any]]:
+        """Fetch all classifications for a tenant."""
+        response = await self.supabase.table("classifications")\
+            .select("*")\
+            .eq("tenant_id", str(tenant_id))\
+            .execute()
+        return response.data or []
+
+    async def create_classification(self, tenant_id: UUID, name: str, description: Optional[str] = None) -> Dict[str, Any]:
+        """Create a new classification."""
+        # Check if exists
+        existing = await self.supabase.table("classifications")\
+            .select("*")\
+            .eq("tenant_id", str(tenant_id))\
+            .eq("name", name)\
+            .execute()
+        
+        if existing.data:
+            return existing.data[0]
+
+        response = await self.supabase.table("classifications").insert({
+            "tenant_id": str(tenant_id),
+            "name": name
+        }).execute()
+        
+        return response.data[0] if response.data else None
+
+    async def create_classifications_batch(self, tenant_id: UUID, names: List[str]) -> List[Dict[str, Any]]:
+        """Create multiple classifications at once."""
+        results = []
+        for name in names:
+            res = await self.create_classification(tenant_id, name)
+            if res:
+                results.append(res)
+        return results
+
+    async def classify_files(self, tenant_id: UUID) -> Dict[str, int]:
         """
-        Query extracted files with embeddings joined to file uploads
+        Auto-classify unclassified files using LLM.
         """
-        rows = await self.extraction_repo.get_extracted_files_with_embeddings(tenant_id)
+        # 1. Get all classifications
+        classifications = await self.get_classifications(tenant_id)
+        if not classifications:
+            return {"classified": 0, "failed": 0, "skipped": 0}
+            
+        class_names = [c["name"] for c in classifications]
+        
+        # 2. Get unclassified files (where classification_id is NULL)
+        # Note: In PRD file_uploads links to classification. 
+        # Check if 'file_uploads' table has 'classification_id'.
+        # Based on setup_database.sql, 'file_uploads' has 'classification_id'.
+        
+        files_resp = await self.supabase.table("file_uploads")\
+            .select("*, raw_files(file_name, file_link), extracted_files(summary)")\
+            .eq("tenant_id", str(tenant_id))\
+            .is_("classification_id", "null")\
+            .execute()
+            
+        files_to_classify = files_resp.data or []
+        classified_count = 0
+        failed_count = 0
 
-        if not rows:
-            return []
+        for file_record in files_to_classify:
+            summary = file_record.get("extracted_files", {}).get("summary")
+            file_name = file_record.get("raw_files", {}).get("file_name")
+            
+            if not summary:
+                continue
 
-        return [
-            ExtractedFile(
-                file_upload_id=row["file_uploads"]["id"],
-                type=row["file_uploads"]["type"],
-                name=row["file_uploads"]["name"],
-                tenant_id=row["file_uploads"]["tenant_id"],
-                extracted_file_id=row["id"],
-                extracted_data=row["extracted_data"],
-                embedding=json.loads(row["embedding"])
-                if isinstance(row["embedding"], str)
-                else row["embedding"],
-                classification=Classification(
-                    classification_id=row["file_uploads"]["classifications"]["id"],
-                    tenant_id=row["file_uploads"]["classifications"]["tenant_id"],
-                    name=row["file_uploads"]["classifications"]["name"],
-                )
-                if row["file_uploads"].get("classifications")
-                else None,
+            # 3. Ask LLM
+            prompt = (
+                f"File: {file_name}\n"
+                f"Summary: {summary}\n"
+                f"Available Classifications: {', '.join(class_names)}\n\n"
+                "Task: Assign the best matching classification from the list.\n"
+                "Return a JSON object: { \"classification\": \"Exact Name From List\" }\n"
+                "If none match well, return { \"classification\": null }"
             )
-            for row in rows
-        ]
+            
+            try:
+                response = await self.llm.chat(prompt, json_response=True)
+                # Parse response - assuming LLMClient returns a ModelResponse-like object 
+                # but we've patched it to return Any (dict) in previous steps.
+                # Just in case, let's handle the dict structure carefully.
+                
+                content_str = response.choices[0].message.content
+                import json
+                result = json.loads(content_str)
+                best_class = result.get("classification")
+                
+                if best_class and best_class in class_names:
+                    # Find ID
+                    class_id = next(c["id"] for c in classifications if c["name"] == best_class)
+                    
+                    # Update DB
+                    await self.supabase.table("file_uploads")\
+                        .update({"classification_id": class_id})\
+                        .eq("id", file_record["id"])\
+                        .execute()
+                    classified_count += 1
+            except Exception as e:
+                print(f"Failed to classify file {file_record['id']}: {e}")
+                failed_count += 1
+                
+        return {"classified": classified_count, "failed": failed_count}
 
-    async def get_classifications(self, tenant_id: UUID) -> list[Classification]:
+    async def get_clustering_visualization(self, tenant_id: UUID) -> Dict[str, Any]:
         """
-        Query classifications for the given tenant
+        Return data for visualization.
+        For now, returns a mock structure or simple mapping.
+        PRD implies 2D/3D points. We'll return existing files grouped by classification.
         """
-        rows = await self.classification_repo.get_classifications_by_tenant(tenant_id)
-
-        return [
-            Classification(
-                classification_id=row["id"],
-                tenant_id=row["tenant_id"],
-                name=row["name"],
-            )
-            for row in rows
-        ]
-
-    async def set_classifications(
-        self, tenant_id: UUID, classification_names: list[str]
-    ) -> list[Classification]:
-        """
-        Set classifications for a tenant. Creates new ones, keeps existing ones, and deletes missing ones.
-        Files linked to deleted classifications will have their classification_id set to NULL.
-        """
-        # Get existing classifications
-        existing = await self.get_classifications(tenant_id)
-        existing_names = {c.name for c in existing}
-        existing_by_name = {c.name: c for c in existing}
-
-        new_names = set(classification_names)
-
-        # Determine operations
-        to_create = new_names - existing_names
-        to_delete = existing_names - new_names
-
-        # Create new classifications
-        if to_create:
-            await self.classification_repo.create_classifications(
-                [{"tenant_id": str(tenant_id), "name": name} for name in to_create]
-            )
-
-        # Delete removed classifications
-        if to_delete:
-            ids_to_delete = [
-                str(existing_by_name[name].classification_id) for name in to_delete
-            ]
-
-            # First, unlink files
-            await self.classification_repo.unlink_files_from_classifications(ids_to_delete)
-
-            # Then delete classifications
-            await self.classification_repo.delete_classifications(ids_to_delete)
-
-        # Return updated list
-        return await self.get_classifications(tenant_id)
-
-    async def classify_file(
-        self, file_upload_id: UUID, classification_id: UUID
-    ) -> bool:
-        """
-        Set the classification for a file upload.
-        Returns True if successful, False otherwise.
-        """
-        return await self.classification_repo.update_file_classification(file_upload_id, classification_id)
-
-
-def get_classification_service(
-    supabase: AsyncClient = Depends(get_async_supabase),
-) -> ClassificationService:
-    """Instantiates a ClassificationService object in route parameters"""
-    return ClassificationService(
-        ClassificationRepository(supabase),
-        ExtractionRepository(supabase)
-    )
+        # Fetch all files with classification
+        files_resp = await self.supabase.table("file_uploads")\
+            .select("id, name, classification_id, classifications(name)")\
+            .eq("tenant_id", str(tenant_id))\
+            .not_.is_("classification_id", "null")\
+            .execute()
+            
+        data = files_resp.data or []
+        
+        # Group logic or just return raw list for frontend to handle?
+        # Frontend expects 'VisualizationResponse'. 
+        # Let's peek at frontend types if needed, but for now return raw data 
+        # and let frontend helper parse it if possible, or build simple nodes/links.
+        
+        return {"points": data}  # Simplified

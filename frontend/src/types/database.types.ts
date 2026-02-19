@@ -146,6 +146,27 @@ export type Database = {
           },
         ]
       }
+      raw_files: {
+        Row: {
+          file_id: string
+          file_name: string
+          file_link: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          file_id?: string
+          file_name: string
+          file_link: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          file_id?: string
+          file_name?: string
+          file_link?: string
+          uploaded_at?: string | null
+        }
+        Relationships: []
+      }
       migrations: {
         Row: {
           created_at: string | null
@@ -218,51 +239,59 @@ export type Database = {
       }
       relationships: {
         Row: {
-          created_at: string | null
-          from_classification_id: string
-          id: string
-          tenant_id: string
-          to_classification_id: string
-          type: Database['public']['Enums']['relationship_type']
+          relationship_id: string
+          relationship_name: string
+          relationship_description: string
         }
         Insert: {
-          created_at?: string | null
-          from_classification_id: string
-          id?: string
-          tenant_id: string
-          to_classification_id: string
-          type: Database['public']['Enums']['relationship_type']
+          relationship_id?: string
+          relationship_name: string
+          relationship_description: string
         }
         Update: {
+          relationship_id?: string
+          relationship_name?: string
+          relationship_description?: string
+        }
+        Relationships: []
+      }
+      file_relationships: {
+        Row: {
+          file_id: string
+          relationship_id: string
+          created_at: string | null
+          confidence_score: number | null
+          source: string | null
+        }
+        Insert: {
+          file_id: string
+          relationship_id: string
           created_at?: string | null
-          from_classification_id?: string
-          id?: string
-          tenant_id?: string
-          to_classification_id?: string
-          type?: Database['public']['Enums']['relationship_type']
+          confidence_score?: number | null
+          source?: string | null
+        }
+        Update: {
+          file_id?: string
+          relationship_id?: string
+          created_at?: string | null
+          confidence_score?: number | null
+          source?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'relationships_from_classification_id_fkey'
-            columns: ['from_classification_id']
+            foreignKeyName: "file_relationships_file_id_fkey"
+            columns: ["file_id"]
             isOneToOne: false
-            referencedRelation: 'classifications'
-            referencedColumns: ['id']
+            referencedRelation: "raw_files"
+            referencedColumns: ["file_id"]
           },
           {
-            foreignKeyName: 'relationships_tenant_id_fkey'
-            columns: ['tenant_id']
+            foreignKeyName: "file_relationships_relationship_id_fkey"
+            columns: ["relationship_id"]
             isOneToOne: false
-            referencedRelation: 'tenants'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'relationships_to_classification_id_fkey'
-            columns: ['to_classification_id']
-            isOneToOne: false
-            referencedRelation: 'classifications'
-            referencedColumns: ['id']
-          },
+            referencedRelation: "relationships"
+            referencedColumns: ["relationship_id"]
+          }
         ]
       }
       tenants: {

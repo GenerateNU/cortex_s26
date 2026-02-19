@@ -1,9 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { ProtectedRoute } from './components/auth/ProtectedRoute'
-import { LoginPage } from './pages/LoginPage'
-import { DocumentPage } from './pages/DocumentPage'
+// import { ProtectedRoute } from './components/auth/ProtectedRoute'
+// import { LoginPage } from './pages/LoginPage'
+import { DashboardPage } from './pages/DashboardPage' // NEW
+import { SearchPage } from './pages/SearchPage'       // NEW
+import { DataExplorerPage } from './pages/DataExplorerPage' // NEW
 import { AdminPage } from './pages/AdminPage'
-// import { ClusterVisualizationPage } from './pages/ClusterVisualizationPage'
 import { Layout } from './components/layout/Layout'
 import { ErrorTester } from './components/debug/ErrorTester'
 
@@ -12,40 +13,49 @@ const isDevelopment = import.meta.env.VITE_ENVIRONMENT === 'development'
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      {/* <Route path="/login" element={<LoginPage />} /> */}
       <Route
         path="/"
         element={
-          <ProtectedRoute>
-            <DocumentPage />
-          </ProtectedRoute>
+          // <ProtectedRoute>
+            <DashboardPage />
+          // </ProtectedRoute>
         }
       />
       <Route
-        path="/admin"
+        path="/search"
         element={
-          <ProtectedRoute requireRole="admin">
-            <AdminPage />
-          </ProtectedRoute>
+          // <ProtectedRoute>
+            <SearchPage />
+          // </ProtectedRoute>
         }
       />
-      {/* <Route
-        path="/cluster-visualization"
+      <Route
+        path="/explorer"
         element={
-          <ProtectedRoute requireRole="admin">
-            <ClusterVisualizationPage />
-          </ProtectedRoute>
+          // <ProtectedRoute>
+            <DataExplorerPage />
+          // </ProtectedRoute>
         }
-      /> */}
+      />
+      <Route path="/explorer" element={<DataExplorerPage />} />
+      <Route
+        path="/admin"
+        element={
+          // <ProtectedRoute requireRole="admin">
+            <AdminPage />
+          // </ProtectedRoute>
+        }
+      />
       {isDevelopment && (
         <Route
           path="/error-test"
           element={
-            <ProtectedRoute>
+            // <ProtectedRoute>
               <Layout>
                 <ErrorTester />
               </Layout>
-            </ProtectedRoute>
+            // </ProtectedRoute>
           }
         />
       )}

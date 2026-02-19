@@ -1,112 +1,106 @@
-# app/services/preprocess_service.py
 from uuid import UUID
 
 from fastapi import Depends
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
-from app.services.extraction.embeddings import generate_embedding
-from app.services.extraction.pdf_strategy import PdfExtractionStrategy, get_pdf_extraction_strategy
 from app.repositories.extraction_repository import ExtractionRepository
-from app.services.product_service import ProductService
-from app.repositories.product_repository import ProductRepository
-from app.schemas.product_schemas import ProductIngest
+from app.services.extraction.embeddings import generate_embedding
+from app.services.extraction.pdf_strategy import (
+    PdfExtractionStrategy,
+    get_pdf_extraction_strategy,
+)
+from app.services.pattern_recognition_service import PatternRecognitionService
 
 
 class PreprocessService:
     def __init__(
-        self, 
-        extraction_repo: ExtractionRepository, 
+        self,
+        extraction_repo: ExtractionRepository,
         pdf_strategy: PdfExtractionStrategy,
-        product_service: ProductService
+        relationship_service: PatternRecognitionService
     ):
         self.extraction_repo = extraction_repo
         self.pdf_strategy = pdf_strategy
-        self.product_service = product_service
+        self.relationship_service = relationship_service
 
-    async def created_queued_extraction(self, file_upload_id: UUID) -> UUID:
+    async def created_queued_extraction(self, file_id: UUID) -> UUID:
         """
-        Created an extracted_files entry with status "queued" and returns the extracted_file_id
+        Created an extracted_files entry with status "queued" and returns the file_id
         """
-        return await self.extraction_repo.create_queued_extraction(file_upload_id)
+        return await self.extraction_repo.create_queued_extraction(file_id)
 
-    async def process_pdf_upload(self, extracted_file_id: UUID) -> str:
+    async def process_pdf_upload(self, file_id: UUID) -> str:
         """
         Full preprocessing pipeline:
-        1. Download PDF from storage
-        2. Extract structured data
-        3. Generate embedding
-        4. Store in extracted_files
-        5. Ingest into Product Search Index
+        1. Download PDF from storage (using raw_files link)
+        2. Extract structured data + Classification + Summary
+        3. Generate Vector Embedding
+        4. Store in database
+        5. Detect & Link Relationships
         """
         try:
-            # Update status to "processing"
-            await self.extraction_repo.update_status(extracted_file_id, "processing")
+            # Update summary to "processing"
+            await self.extraction_repo.update_status(file_id, "Processing PDF...")
 
-            response_data = await self.extraction_repo.get_extraction_with_file_info(extracted_file_id)
+            response_data = await self.extraction_repo.get_extraction_with_file_info(file_id)
 
-            tenant_id = response_data["file_uploads"]["tenant_id"]
-            file_name = response_data["file_uploads"]["name"]
+            # New schema: raw_files table
+            raw_file = response_data["raw_files"]
+            file_name = raw_file["file_name"]
+            file_link = raw_file["file_link"]
 
-            # Download PDF
-            pdf_bytes = await self.extraction_repo.download_file(tenant_id, file_name)
-            print("PDF downloaded", flush=True)
+            # 1. Download PDF
+            pdf_bytes = await self.extraction_repo.download_file(file_link)
+            print(f"PDF downloaded: {file_name}", flush=True)
 
-            # Extract data
+            # 2. Extract data (JSON + Type + Summary)
             extraction_result = await self.pdf_strategy.extract_data(pdf_bytes, file_name)
-            extracted_json = extraction_result["result"]
-            print("Data extracted", flush=True)
 
-            # Generate embedding for whole document
-            embedding_vector = await generate_embedding(extracted_json)
+            # 'result' contains: file_type, summary, extracted_json
+            extracted_data = extraction_result["result"]
+            print("Data extracted & classified", flush=True)
+
+            # 3. Generate Embedding
+            # We embed the whole result structure (JSON + Summary) for semantic search
+            embedding = await generate_embedding(extracted_data)
             print("Embedding generated", flush=True)
 
-            # Update status to "complete" with extracted data and embedding
+            # 4. Save to Database
             await self.extraction_repo.update_extraction_result(
-                extracted_file_id, extracted_json, embedding_vector
+                file_id, extracted_data, embedding
             )
-            print("Extraction stored", flush=True)
-            
-            # --- AUTO-INGESTION ---
-            try:
-                # Attempt to find a suitable ID for the product. 
-                # If extraction has 'product_id' or 'id', use it. Otherwise fall back to file name or UUID.
-                product_id = extracted_json.get("product_id") or extracted_json.get("id") or file_name
-                
-                # Create ingestion object
-                ingest_data = ProductIngest(
-                    product_id=str(product_id),
-                    metadata=extracted_json
-                )
-                
-                print(f"Auto-ingesting product: {product_id}", flush=True)
-                await self.product_service.ingest_product(ingest_data)
-                print("Auto-ingestion complete", flush=True)
-                
-            except Exception as e:
-                # Log error but don't fail the whole extraction if search indexing fails
-                print(f"Warning: Auto-ingestion failed for {extracted_file_id}: {e}", flush=True)
+            print("Extraction saved to DB", flush=True)
 
-            return str(extracted_file_id)
+            # 5. Relationship Detection
+            # We use the summary to infer relationships
+            summary = extracted_data.get("summary", "")
+            if summary:
+                print("Detecting relationships...", flush=True)
+                await self.relationship_service.detect_and_link(file_id, summary)
+                print("Relationships processed", flush=True)
+
+            return str(file_id)
+
         except Exception as e:
-            # Update status to "failed" and store error
-            await self.extraction_repo.update_status(extracted_file_id, "failed", str(e))
+            # Update status to "failed"
+            print(f"Processing failed for {file_id}: {e}", flush=True)
+            await self.extraction_repo.update_status(file_id, "Failed", str(e))
             raise
 
-    async def delete_previous_extraction(self, file_upload_id: UUID):
+    async def delete_previous_extraction(self, file_id: UUID):
         """
         Delete Previous extracted data entry if one exists
         """
-        await self.extraction_repo.delete_by_source_file(file_upload_id)
+        await self.extraction_repo.delete_by_file_id(file_id)
 
 
 def get_preprocess_service(
     supabase: AsyncClient = Depends(get_async_supabase),
 ) -> PreprocessService:
     """Instantiates a PreprocessService object in route parameters"""
-    print("Created Preprocess Service")
     return PreprocessService(
         ExtractionRepository(supabase),
         get_pdf_extraction_strategy(),
-        ProductService(ProductRepository(supabase))
+        PatternRecognitionService(supabase)
     )
