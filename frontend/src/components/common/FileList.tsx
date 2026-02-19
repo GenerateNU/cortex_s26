@@ -50,9 +50,7 @@ export const FileList: React.FC = () => {
         if (relData) {
             relData.forEach((r) => {
                 if (!relMap[r.file_id]) relMap[r.file_id] = [];
-                // @ts-expect-error - Join types are tricky without deep utility types
                 if (r.relationships) {
-                     // @ts-expect-error - Join types are tricky
                     const rel = r.relationships as { relationship_name: string; relationship_description: string };
                     relMap[r.file_id].push({
                         name: rel.relationship_name,

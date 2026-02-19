@@ -1,9 +1,11 @@
 import json
+from typing import Any
 from uuid import UUID
-from typing import List, Dict, Any
 
 from supabase._async.client import AsyncClient
+
 from app.core.litellm import LLMClient
+
 
 class PatternRecognitionService:
     def __init__(self, supabase: AsyncClient):
@@ -15,7 +17,7 @@ class PatternRecognitionService:
             "Avoid creating duplicate or slightly different names for the same thing."
         )
 
-    async def analyze_relationships(self, tenant_id: UUID = None) -> List[Dict[str, Any]]:
+    async def analyze_relationships(self, tenant_id: UUID = None) -> list[dict[str, Any]]:
         """
         Scans all unlinked files and tries to link them to relationships.
         Note: tenant_id is deprecated and ignored in single-tenant mode.
@@ -24,11 +26,11 @@ class PatternRecognitionService:
         # However, supabase filtering for "doesn't have relation" is hard.
         # Let's get all files and then check? Or just get recent ones?
         # For MVP, let's process ALL files that have a summary.
-        
+
         files_resp = await self.supabase.table("extracted_files")\
             .select("file_id, summary")\
             .execute()
-            
+
         files = files_resp.data or []
         results = []
 
@@ -37,19 +39,19 @@ class PatternRecognitionService:
             file_id = f.get("file_id")
             if not summary:
                 continue
-                
+
             # Check if linked
             linked_resp = await self.supabase.table("file_relationships")\
                 .select("relationship_id")\
                 .eq("file_id", file_id)\
                 .execute()
-                
+
             if linked_resp.data:
                 continue # Already linked
 
             await self.detect_and_link(file_id, summary)
             results.append({"file_id": file_id, "status": "linked"})
-            
+
         return results
 
     async def detect_and_link(self, file_id: UUID, summary: str, manual_context: str = None) -> None:
@@ -83,7 +85,7 @@ class PatternRecognitionService:
                  content_str = llm_response['choices'][0]['message']['content']
             else:
                  content_str = llm_response.choices[0].message.content
-                 
+
             content = json.loads(content_str)
             matches = content.get("matches", [])
         except Exception as e:
@@ -135,7 +137,7 @@ class PatternRecognitionService:
                 except Exception as e:
                     print(f"Link failed: {e}")
 
-    async def get_graph_data(self) -> Dict[str, List[Any]]:
+    async def get_graph_data(self) -> dict[str, list[Any]]:
         """
         Fetches all graph data (Nodes and Edges) for visualization.
         """
@@ -147,7 +149,7 @@ class PatternRecognitionService:
         # We need file metadata. simpler to just fetch all files?
         # Let's fetch file_relationships joined with raw_files metadata if possible.
         # Supabase join: select(*, raw_files(file_name))
-        
+
         links_resp = await self.supabase.table("file_relationships")\
             .select("*, raw_files(file_name)")\
             .execute()
@@ -156,7 +158,7 @@ class PatternRecognitionService:
         # 3. Construct Nodes and Edges
         nodes = []
         edges = []
-        
+
         # Add Relationship Nodes
         for r in relationships:
             nodes.append({
@@ -169,7 +171,7 @@ class PatternRecognitionService:
         # Add File Nodes and Edges
         # We want unique file nodes.
         seen_files = set()
-        
+
         for link in links:
             file_id = link["file_id"]
             rel_id = link["relationship_id"]

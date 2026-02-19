@@ -36,4 +36,4 @@ async def search_documents(
 
         return SearchResponse(results=mapped_results)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

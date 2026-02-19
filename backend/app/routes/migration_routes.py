@@ -1,5 +1,5 @@
-from typing import List, Dict, Any
 from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from supabase._async.client import AsyncClient
 
@@ -13,7 +13,7 @@ def get_service(supabase: AsyncClient = Depends(get_async_supabase)) -> Migratio
 
 @router.get("/{tenant_id}")
 async def list_migrations(
-    tenant_id: UUID, 
+    tenant_id: UUID,
     service: MigrationService = Depends(get_service)
 ):
     return await service.list_migrations(tenant_id)

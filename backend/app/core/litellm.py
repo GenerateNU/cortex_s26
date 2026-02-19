@@ -1,9 +1,10 @@
 import base64
 import os
 from enum import Enum
-
 from typing import Any
+
 from litellm import acompletion, aembedding
+
 # from litellm.types.utils import EmbeddingResponse, ModelResponse
 
 

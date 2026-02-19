@@ -1,5 +1,5 @@
-from typing import List, Dict, Any
 from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from supabase._async.client import AsyncClient
 

@@ -5,8 +5,8 @@ from supabase._async.client import AsyncClient
 
 from app.repositories.extraction_repository import ExtractionRepository
 from app.services.extraction.pdf_strategy import get_pdf_extraction_strategy
-from app.services.preprocess_service import PreprocessService
 from app.services.pattern_recognition_service import PatternRecognitionService
+from app.services.preprocess_service import PreprocessService
 
 
 class PreprocessingQueue:

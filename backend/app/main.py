@@ -1,12 +1,12 @@
+import os
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-import os
 
 # Load env vars from .env file (looks in current or parent directories)
-load_dotenv()
+load_dotenv()  # noqa: E402
 
 # Fix for local dev: Map VITE_SUPABASE_URL to SUPABASE_URL if not set
 if not os.getenv("SUPABASE_URL") and os.getenv("VITE_SUPABASE_URL"):
@@ -17,11 +17,11 @@ if not os.getenv("SUPABASE_SERVICE_ROLE_KEY") and os.getenv("BACKEND_SUPABASE_SE
     os.environ["SUPABASE_SERVICE_ROLE_KEY"] = os.getenv("BACKEND_SUPABASE_SERVICE_ROLE_KEY")
 
 
-from app.api import api_router
-from app.core.supabase import get_async_supabase
-from app.core.webhooks import configure_webhooks
-from app.services.extraction.preprocessing_queue import init_queue
-from app.services.supabase_check import wait_for_supabase
+from app.api import api_router  # noqa: E402
+from app.core.supabase import get_async_supabase  # noqa: E402
+from app.core.webhooks import configure_webhooks  # noqa: E402
+from app.services.extraction.preprocessing_queue import init_queue  # noqa: E402
+from app.services.supabase_check import wait_for_supabase  # noqa: E402
 
 
 @asynccontextmanager

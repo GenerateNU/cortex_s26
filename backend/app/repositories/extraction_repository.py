@@ -30,8 +30,8 @@ class ExtractionRepository:
     async def update_status(self, file_id: UUID, status: str, error_message: str = None) -> None:
         """
         Updates the summary/status of the extraction.
-        NOTE: The new schema doesn't have a specific 'status' column, 
-        so we might encode status in summary or metadata for now, 
+        NOTE: The new schema doesn't have a specific 'status' column,
+        so we might encode status in summary or metadata for now,
         or rely on presence of jsonb_data.
         For this refactor, I'll update the 'summary' to reflect status.
         """
@@ -94,7 +94,7 @@ class ExtractionRepository:
         """
         Downloads a file from storage.
         Assuming 'documents' bucket for now, or determining bucket from link.
-        Refactor: The 'file_link' in raw_files might be a public URL or storage path. 
+        Refactor: The 'file_link' in raw_files might be a public URL or storage path.
         If strict storage path is needed, we assume 'documents' bucket.
         """
         # Simplified download logic assuming standard Supabase storage path

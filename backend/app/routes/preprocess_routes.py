@@ -19,4 +19,4 @@ async def preprocess_file(
         task_id = await queue.enqueue(file_id)
         return {"message": "File queued for preprocessing", "task_id": task_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

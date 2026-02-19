@@ -1,6 +1,6 @@
-from typing import List, Dict, Any
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
@@ -21,13 +21,13 @@ async def list_classifications(
 @router.post("/create_classifications/{tenant_id}")
 async def create_classifications(
     tenant_id: UUID,
-    # In a real app we'd accept a body with names, but Frontend hook 
-    # `useClassifications` calls this without body? 
+    # In a real app we'd accept a body with names, but Frontend hook
+    # `useClassifications` calls this without body?
     # Let's check `classification.hooks.tsx`.
     # It seems to just POST to `/create_classifications/{tenant_id}` with no body?
     # Wait, the hook `createClassificationsMutation` calls `api.post(...)`.
-    # The hook creates classifications? 
-    # Ah, `createClassificationsMutation` in frontend seems to imply "Auto-generate classifications" 
+    # The hook creates classifications?
+    # Ah, `createClassificationsMutation` in frontend seems to imply "Auto-generate classifications"
     # OR it's a manual create.
     # AdminPage.tsx -> ClassificationStep might have a form.
     # Actually, looking at `ClassificationStep`, it likely lets user type names.
@@ -38,18 +38,18 @@ async def create_classifications(
     """
     Generate valid classifications based on existing unclassified documents.
     """
-    # For MVP, let's just create some default ones if none exist, 
-    # or scan files to suggest. 
+    # For MVP, let's just create some default ones if none exist,
+    # or scan files to suggest.
     # The Frontend `useClassifications` has `createClassifications`.
-    # Let's verify what the frontend sends. 
+    # Let's verify what the frontend sends.
     # IF the frontend sends data, we need Pydantic model.
     # Logic: Scan all files, ask LLM "What are the distinct categories?", create them.
-    
+
     # Implementation:
     # 1. Fetch file summaries
     # 2. Ask LLM to cluster/name them
     # 3. Create those classifications
-    
+
     # Placeholder:
     defaults = ["Invoices", "Contracts", "Specifications", "Receipts"]
     return await service.create_classifications_batch(tenant_id, defaults)
