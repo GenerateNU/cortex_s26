@@ -3,19 +3,13 @@ import { Layout } from '../components/layout/Layout';
 import { api } from '../services/api';
 import type { SearchResult } from '../types';
 import { Button } from '../components/ui/Button';
-import { useClassifications } from '../hooks/classification.hooks';
-import { useAuth } from '../contexts/AuthContext';
 import { StatusBadge } from '../components/ui/StatusBadge';
 
 export const SearchPage: React.FC = () => {
-    const { user } = useAuth();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
-
-    // Classification Hooks
-    const { createClassifications, classifyFiles, isCreatingClassifications, isClassifyingFiles } = useClassifications();
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,17 +27,6 @@ export const SearchPage: React.FC = () => {
         }
     };
 
-    const handleAutoClassify = async () => {
-        try {
-            // First step of original Admin page: Generate taxonomy
-            await createClassifications();
-            // Second step: Apply classifications to unclassified files
-            await classifyFiles();
-        } catch (error) {
-            console.error("Auto-classification failed", error);
-        }
-    };
-
     return (
         <Layout>
             <div className="flex flex-col h-full min-h-0 space-y-6">
@@ -54,21 +37,6 @@ export const SearchPage: React.FC = () => {
                         <h1 className="text-3xl font-bold text-zinc-100 mb-2 tracking-tight">Search & Organize</h1>
                         <p className="text-zinc-500 font-medium">Find documents using AI or automatically organize your data.</p>
                     </div>
-                    {user?.role === 'admin' && (
-                        <div className="flex items-center space-x-4 bg-zinc-900/80 p-4 border border-zinc-800 rounded-xl shadow-sm backdrop-blur-sm">
-                            <div className="text-sm">
-                                <p className="text-zinc-200 font-bold tracking-wide">Smart Organization</p>
-                                <p className="text-zinc-500 text-xs mt-0.5">AI will read and group your documents</p>
-                            </div>
-                            <Button 
-                                onClick={handleAutoClassify} 
-                                loading={isCreatingClassifications || isClassifyingFiles}
-                                variant="primary"
-                            >
-                                Auto-Classify Library
-                            </Button>
-                        </div>
-                    )}
                 </div>
 
                 {/* Search Bar Section */}

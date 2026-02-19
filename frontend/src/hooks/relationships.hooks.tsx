@@ -54,10 +54,10 @@ export const useGetFileRelationships = (relationshipId: string | undefined) => {
         .select(`
           *,
           file:raw_files (
-            file_name
-          ),
-          extracted_file:extracted_files (
-            file_type
+            file_name,
+            extracted_file:extracted_files (
+              file_type
+            )
           )
         `)
         .eq('relationship_id', relationshipId)
@@ -65,17 +65,23 @@ export const useGetFileRelationships = (relationshipId: string | undefined) => {
 
       if (error) throw error
 
-      return (data || []).map((item: any) => ({
-        file_id: item.file_id,
-        relationship_id: item.relationship_id,
-        created_at: item.created_at,
-        confidence_score: item.confidence_score,
-        source: item.source,
-        file: {
-          name: item.file?.file_name || 'Unknown File',
-          type: item.extracted_file?.file_type || null
+      return (data || []).map((item: any) => {
+        // Handle potential array from extracted_files join
+        const extFiles = item.file?.extracted_file;
+        const fileType = Array.isArray(extFiles) && extFiles.length > 0 ? extFiles[0].file_type : extFiles?.file_type || null;
+        
+        return {
+          file_id: item.file_id,
+          relationship_id: item.relationship_id,
+          created_at: item.created_at,
+          confidence_score: item.confidence_score,
+          source: item.source,
+          file: {
+            name: item.file?.file_name || 'Unknown File',
+            type: fileType
+          }
         }
-      }))
+      })
     },
     enabled: !!relationshipId,
   })
