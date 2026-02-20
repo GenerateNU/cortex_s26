@@ -11,7 +11,7 @@ export const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl w-full mx-auto p-6 flex-1 overflow-y-auto min-h-0">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-zinc-100">Knowledge Base</h1>
         <Link to="/search" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors shadow-sm">

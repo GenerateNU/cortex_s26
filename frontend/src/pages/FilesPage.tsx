@@ -8,7 +8,7 @@ export function FilesPage() {
 
   const filteredFiles = useMemo(() => {
     if (!extractedFiles) return []
-    return extractedFiles.filter(file => 
+    return extractedFiles.filter(file =>
       (file.file_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (file.summary || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -30,7 +30,7 @@ export function FilesPage() {
       </div>
 
       <div className="flex-1 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden flex flex-col shadow-lg">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto flex-1">
           <table className="min-w-full divide-y divide-zinc-800">
             <thead className="bg-[#09090b]">
               <tr>
@@ -79,12 +79,12 @@ export function FilesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-md border
-                        ${file.file_type === 'RFQ' ? 'bg-blue-900/30 text-blue-300 border-blue-900/50' : 
-                          file.file_type === 'PO' ? 'bg-emerald-900/30 text-emerald-300 border-emerald-900/50' : 
-                          file.file_type === 'ProdSpec' ? 'bg-purple-900/30 text-purple-300 border-purple-900/50' :
-                          file.file_type === 'Sales' ? 'bg-amber-900/30 text-amber-300 border-amber-900/50' :
-                          file.file_type === 'Customers' ? 'bg-pink-900/30 text-pink-300 border-pink-900/50' :
-                          'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>
+                        ${file.file_type === 'RFQ' ? 'bg-blue-900/30 text-blue-300 border-blue-900/50' :
+                          file.file_type === 'PO' ? 'bg-emerald-900/30 text-emerald-300 border-emerald-900/50' :
+                            file.file_type === 'ProdSpec' ? 'bg-purple-900/30 text-purple-300 border-purple-900/50' :
+                              file.file_type === 'Sales' ? 'bg-amber-900/30 text-amber-300 border-amber-900/50' :
+                                file.file_type === 'Customers' ? 'bg-pink-900/30 text-pink-300 border-pink-900/50' :
+                                  'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>
                         {file.file_type || 'Unknown'}
                       </span>
                     </td>
@@ -99,7 +99,7 @@ export function FilesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link 
+                      <Link
                         to={`/explorer?fileId=${file.file_id}`}
                         className="text-purple-400 hover:text-purple-300 hover:underline underline-offset-4 transition-all"
                       >

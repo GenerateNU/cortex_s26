@@ -13,6 +13,18 @@
   --color-purple-900: #251b3f;
   --color-purple-950: #130e21;
 
+  --color-primary-50: #f6f5f9;
+  --color-primary-100: #edeaf4;
+  --color-primary-200: #d6cee3;
+  --color-primary-300: #b9afd0;
+  --color-primary-400: #988abc;
+  --color-primary-500: #7a68a9;
+  --color-primary-600: #5d459d;
+  --color-primary-700: #49357b;
+  --color-primary-800: #37285d;
+  --color-primary-900: #251b3f;
+  --color-primary-950: #130e21;
+
   /* Fix spacing scale */
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;

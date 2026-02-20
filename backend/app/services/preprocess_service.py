@@ -120,9 +120,14 @@ class PreprocessService:
                 # Relationship Detection
                 summary = extracted_data.get("summary", "")
                 if summary:
-                     # For CSV rows, we pass the unique current_id (new UUID) not the raw file_id
-                     # This ensures relationships are linked to the specific row
-                    await self.relationship_service.detect_and_link(current_id, summary)
+                    # Pass the correct file_id (raw_file ID), not the current_id (extracted_file ID for CSV rows)
+                    # This obeys the file_relationships.file_id foreign key constraint to raw_files
+                    
+                    # Also wrap in try-except so a 429 RateLimitError won't break the entire extraction queue
+                    try:
+                        await self.relationship_service.detect_and_link(file_id, summary)
+                    except Exception as rel_err:
+                        print(f"Non-fatal relationship detection error for {row_name}: {rel_err}")
 
             print("All items processed", flush=True)
             return str(file_id)

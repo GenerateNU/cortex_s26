@@ -121,7 +121,8 @@ class ExtractionRepository:
             self.supabase.table("extracted_files")
             .select("*, raw_files(*)")
             .eq("file_id", str(file_id))
-            .single()
+            .limit(1)
+            .maybe_single()
             .execute()
         )
         return response.data

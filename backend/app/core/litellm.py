@@ -94,11 +94,15 @@ class LLMClient:
         
                 # Return single embedding if single input
                 return embeddings[0] if isinstance(input_text, str) else embeddings
-            except RateLimitError as e:
+            except Exception as e:
+                error_str = str(e)
                 if attempt == 9:
                     raise e
-                # The free tier is 5 requests per minute.
-                await asyncio.sleep(15)
+                if "RateLimitError" in error_str or "429" in error_str:
+                    print(f"Embedding rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...", flush=True)
+                    await asyncio.sleep(60)
+                else:
+                    raise e
 
     async def chat(
         self,
@@ -154,9 +158,14 @@ class LLMClient:
                     max_tokens=max_tokens,
                     response_format={"type": "json_object"} if json_response else None,
                 )
-            except RateLimitError as e:
+            except Exception as e:
+                error_str = str(e)
                 if attempt == 9:
                     raise e
-                # The free tier is 5 requests per minute, meaning ~1 request every 12 seconds.
-                # If we hit the limit, wait 15 seconds to let the quota refresh before trying again.
-                await asyncio.sleep(15)
+                if "RateLimitError" in error_str or "429" in error_str:
+                    # The free tier is 15-20 requests per minute.
+                    # If we hit the limit, wait 60 seconds to let the quota refresh and respect requested retryDelay
+                    print(f"Rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...", flush=True)
+                    await asyncio.sleep(60)
+                else:
+                    raise e
