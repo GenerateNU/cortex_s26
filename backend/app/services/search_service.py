@@ -17,7 +17,9 @@ class SearchService:
             "Cite supporting evidence by document number such as [Document 1]. Do not invent facts."
         )
 
-    async def search(self, query: str, limit: int = 5, threshold: float = 0.5) -> list[dict[str, Any]]:
+    async def search(
+        self, query: str, limit: int = 5, threshold: float = 0.5
+    ) -> list[dict[str, Any]]:
         """
         Semantic search for extracted files.
         """
@@ -53,25 +55,21 @@ class SearchService:
         context_parts = []
         for idx, result in enumerate(results, start=1):
             context_parts.append(
-
-                    f"[Document {idx}]\n"
-                    f"file_name: {result.get('file_name') or 'Unknown'}\n"
-                    f"file_type: {result.get('file_type') or 'Unknown'}\n"
-                    f"similarity: {result.get('similarity')}\n"
-                    f"summary: {result.get('summary') or 'None'}\n"
-                    f"extracted_json: "
-                    f"{json.dumps(result.get('extracted_json') or {}, ensure_ascii=False)}"
-
+                f"[Document {idx}]\n"
+                f"file_name: {result.get('file_name') or 'Unknown'}\n"
+                f"file_type: {result.get('file_type') or 'Unknown'}\n"
+                f"similarity: {result.get('similarity')}\n"
+                f"summary: {result.get('summary') or 'None'}\n"
+                f"extracted_json: "
+                f"{json.dumps(result.get('extracted_json') or {}, ensure_ascii=False)}"
             )
 
         context = "\n\n".join(context_parts)
         response = await self.llm.chat(
-
-                f"User query:\n{query}\n\n"
-                f"Retrieved documents:\n{context}\n\n"
-                "Answer the query using only the retrieved documents. Cite document numbers "
-                "for every key claim."
-            
+            f"User query:\n{query}\n\n"
+            f"Retrieved documents:\n{context}\n\n"
+            "Answer the query using only the retrieved documents. Cite document numbers "
+            "for every key claim."
         )
         answer = response.choices[0].message.content.strip()
 

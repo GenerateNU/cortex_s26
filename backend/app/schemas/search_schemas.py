@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -11,10 +11,10 @@ class SearchRequest(BaseModel):
 
 class SearchResult(BaseModel):
     file_id: UUID
-    file_name: Optional[str]
-    file_type: Optional[str]
-    summary: Optional[str]
-    extracted_json: Optional[dict[str, Any]]
+    file_name: str | None
+    file_type: str | None
+    summary: str | None
+    extracted_json: dict[str, Any] | None
     similarity: float
 
 class SearchResponse(BaseModel):
