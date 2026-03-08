@@ -19,3 +19,7 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     results: list[SearchResult]
+
+class RAGSearchResponse(BaseModel):
+    answer: str
+    sources: list[SearchResult]
