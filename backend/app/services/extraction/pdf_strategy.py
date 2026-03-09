@@ -54,27 +54,32 @@ class PdfExtractionStrategy:
 
             # Validate/Normalize keys
             if "extracted_json" not in data:
-                 # Fallback if model puts data at root
-                 if "data" in data:
-                     data["extracted_json"] = data.pop("data")
-                 else:
-                     # Assess if the whole object is the data (minus type/summary)
-                     data["extracted_json"] = {k:v for k,v in data.items() if k not in ["file_type", "summary"]}
+                # Fallback if model puts data at root
+                if "data" in data:
+                    data["extracted_json"] = data.pop("data")
+                else:
+                    # Assess if the whole object is the data (minus type/summary)
+                    data["extracted_json"] = {
+                        k: v
+                        for k, v in data.items()
+                        if k not in ["file_type", "summary"]
+                    }
 
         except Exception:
             data = {
-                "file_type": "ProdSpec", # Default fallback
+                "file_type": "ProdSpec",  # Default fallback
                 "summary": "Extraction failed.",
-                "extracted_json": {"error": "LLM did not return JSON"}
+                "extracted_json": {"error": "LLM did not return JSON"},
             }
 
         print("JSON response parsed", flush=True)
 
         return {
             "file_name": file_name,
-            "result": data, # Contains file_type, summary, extracted_json
+            "result": data,  # Contains file_type, summary, extracted_json
             "meta": {"llm_model": llm_model.value, "source": "gemini-pdf-only"},
         }
+
 
 def get_pdf_extraction_strategy() -> PdfExtractionStrategy:
     return PdfExtractionStrategy()

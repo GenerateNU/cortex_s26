@@ -31,7 +31,9 @@ async def test_rag_search_returns_answer_and_sources():
                 "message": type(
                     "Message",
                     (),
-                    {"content": "This document describes an industrial robot arm. [Document 1]"},
+                    {
+                        "content": "This document describes an industrial robot arm. [Document 1]"
+                    },
                 )()
             },
         )()
@@ -40,7 +42,10 @@ async def test_rag_search_returns_answer_and_sources():
 
     result = await service.rag_search("What is this document about?")
 
-    assert result["answer"] == "This document describes an industrial robot arm. [Document 1]"
+    assert (
+        result["answer"]
+        == "This document describes an industrial robot arm. [Document 1]"
+    )
     assert result["sources"] == fake_results
     service.search.assert_awaited_once()
     service.llm.chat.assert_awaited_once()

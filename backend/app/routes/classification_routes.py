@@ -8,15 +8,19 @@ from app.services.classification_service import ClassificationService
 
 router = APIRouter(prefix="/classification", tags=["Classification"])
 
-def get_service(supabase: AsyncClient = Depends(get_async_supabase)) -> ClassificationService:
+
+def get_service(
+    supabase: AsyncClient = Depends(get_async_supabase),
+) -> ClassificationService:
     return ClassificationService(supabase)
+
 
 @router.get("/list/{tenant_id}")
 async def list_classifications(
-    tenant_id: UUID,
-    service: ClassificationService = Depends(get_service)
+    tenant_id: UUID, service: ClassificationService = Depends(get_service)
 ):
     return await service.get_classifications(tenant_id)
+
 
 @router.post("/create_classifications/{tenant_id}")
 async def create_classifications(
@@ -33,7 +37,7 @@ async def create_classifications(
     # Actually, looking at `ClassificationStep`, it likely lets user type names.
     # If the hook payload is empty, maybe it's "Suggest Classifications"?
     # Let's assume for now it might trigger AUTO-creation from documents.
-    service: ClassificationService = Depends(get_service)
+    service: ClassificationService = Depends(get_service),
 ):
     """
     Generate valid classifications based on existing unclassified documents.
@@ -54,19 +58,19 @@ async def create_classifications(
     defaults = ["Invoices", "Contracts", "Specifications", "Receipts"]
     return await service.create_classifications_batch(tenant_id, defaults)
 
+
 @router.post("/classify_files/{tenant_id}")
 async def classify_files(
-    tenant_id: UUID,
-    service: ClassificationService = Depends(get_service)
+    tenant_id: UUID, service: ClassificationService = Depends(get_service)
 ):
     """
     Assign existing classifications to unclassified files.
     """
     return await service.classify_files(tenant_id)
 
+
 @router.get("/visualize_clustering/{tenant_id}")
 async def visualize_clustering(
-    tenant_id: UUID,
-    service: ClassificationService = Depends(get_service)
+    tenant_id: UUID, service: ClassificationService = Depends(get_service)
 ):
     return await service.get_clustering_visualization(tenant_id)

@@ -9,6 +9,7 @@ class SearchRequest(BaseModel):
     limit: int = Field(default=5, ge=1, le=20)
     threshold: float = Field(default=0.5, ge=0.0, le=1.0)
 
+
 class SearchResult(BaseModel):
     file_id: UUID
     file_name: str | None
@@ -17,8 +18,10 @@ class SearchResult(BaseModel):
     extracted_json: dict[str, Any] | None
     similarity: float
 
+
 class SearchResponse(BaseModel):
     results: list[SearchResult]
+
 
 class RAGSearchResponse(BaseModel):
     answer: str

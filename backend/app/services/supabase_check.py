@@ -19,7 +19,10 @@ async def wait_for_supabase(supabase: AsyncClient):
             return
         except Exception as e:
             retries += 1
-            print(f"Waiting for Supabase... ({retries}/{max_retries}) Error: {e}", flush=True)
+            print(
+                f"Waiting for Supabase... ({retries}/{max_retries}) Error: {e}",
+                flush=True,
+            )
             # print(f"DEBUG: URL={supabase.supabase_url}, KEY={supabase.supabase_key[:10]}...", flush=True)
             await asyncio.sleep(2)
 

@@ -8,13 +8,16 @@ from app.services.pattern_recognition_service import PatternRecognitionService
 
 router = APIRouter(prefix="/pattern-recognition", tags=["Pattern Recognition"])
 
-def get_service(supabase: AsyncClient = Depends(get_async_supabase)) -> PatternRecognitionService:
+
+def get_service(
+    supabase: AsyncClient = Depends(get_async_supabase),
+) -> PatternRecognitionService:
     return PatternRecognitionService(supabase)
+
 
 @router.post("/analyze/{tenant_id}")
 async def analyze_relationships(
-    tenant_id: UUID,
-    service: PatternRecognitionService = Depends(get_service)
+    tenant_id: UUID, service: PatternRecognitionService = Depends(get_service)
 ):
     """
     Analyzes relationships for the given tenant.
@@ -22,10 +25,9 @@ async def analyze_relationships(
     """
     return await service.analyze_relationships(tenant_id)
 
+
 @router.get("/graph")
-async def get_graph_data(
-    service: PatternRecognitionService = Depends(get_service)
-):
+async def get_graph_data(service: PatternRecognitionService = Depends(get_service)):
     """
     Returns nodes and edges for the relationship graph.
     """

@@ -20,7 +20,9 @@ class PreprocessingQueue:
         relationship_service = PatternRecognitionService(supabase)
 
         csv_strategy = get_csv_extraction_strategy()
-        self.service = PreprocessService(extraction_repo, pdf_strategy, csv_strategy, relationship_service)
+        self.service = PreprocessService(
+            extraction_repo, pdf_strategy, csv_strategy, relationship_service
+        )
 
     async def start_worker(self):
         """Start background worker"""

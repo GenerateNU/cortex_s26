@@ -1,11 +1,10 @@
+import asyncio
 import base64
 import os
 from enum import Enum
 from typing import Any
 
 from litellm import acompletion, aembedding
-
-# from litellm.types.utils import EmbeddingResponse, ModelResponse
 
 
 class ModelType(Enum):
@@ -74,24 +73,23 @@ class LLMClient:
             Single 1536-dim vector or list of 1536-dim vectors
 
         """
-        import asyncio
-        from litellm.exceptions import RateLimitError
-        
         embed_model = model.value if model else self.embedding_model.value
 
         # Ensure input is a list
         inputs = [input_text] if isinstance(input_text, str) else input_text
 
         # Generate embeddings with fixed dimensions
-        for attempt in range(10): # Retry up to 10 times to handle 5 RPM limit gracefully
+        for attempt in range(
+            10
+        ):  # Retry up to 10 times to handle 5 RPM limit gracefully
             try:
                 response: Any = await aembedding(
                     model=embed_model, input=inputs, dimensions=768
                 )
-                
+
                 # Extract embeddings
-                embeddings = [data['embedding'] for data in response['data']]
-        
+                embeddings = [data["embedding"] for data in response["data"]]
+
                 # Return single embedding if single input
                 return embeddings[0] if isinstance(input_text, str) else embeddings
             except Exception as e:
@@ -99,7 +97,10 @@ class LLMClient:
                 if attempt == 9:
                     raise e
                 if "RateLimitError" in error_str or "429" in error_str:
-                    print(f"Embedding rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...", flush=True)
+                    print(
+                        f"Embedding rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...",
+                        flush=True,
+                    )
                     await asyncio.sleep(60)
                 else:
                     raise e
@@ -123,9 +124,6 @@ class LLMClient:
         Returns:
             ModelResponse with completion
         """
-        import asyncio
-        from litellm.exceptions import RateLimitError
-        
         messages = []
 
         # Add system prompt if set
@@ -150,7 +148,9 @@ class LLMClient:
         else:
             messages.append({"role": "user", "content": content})
 
-        for attempt in range(10): # Retry up to 10 times to handle 5 RPM limit gracefully
+        for attempt in range(
+            10
+        ):  # Retry up to 10 times to handle 5 RPM limit gracefully
             try:
                 return await acompletion(
                     model=self.model.value,
@@ -165,7 +165,10 @@ class LLMClient:
                 if "RateLimitError" in error_str or "429" in error_str:
                     # The free tier is 15-20 requests per minute.
                     # If we hit the limit, wait 60 seconds to let the quota refresh and respect requested retryDelay
-                    print(f"Rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...", flush=True)
+                    print(
+                        f"Rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...",
+                        flush=True,
+                    )
                     await asyncio.sleep(60)
                 else:
                     raise e
