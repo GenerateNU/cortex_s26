@@ -6,10 +6,10 @@ from app.services.extraction.preprocessing_queue import PreprocessingQueue, get_
 
 router = APIRouter(prefix="/preprocess", tags=["preprocess"])
 
+
 @router.post("/{file_id}")
 async def preprocess_file(
-    file_id: UUID,
-    queue: PreprocessingQueue = Depends(get_queue)
+    file_id: UUID, queue: PreprocessingQueue = Depends(get_queue)
 ):
     """
     Queue a file for preprocessing (Extraction).

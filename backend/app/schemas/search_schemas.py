@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -9,13 +9,20 @@ class SearchRequest(BaseModel):
     limit: int = Field(default=5, ge=1, le=20)
     threshold: float = Field(default=0.5, ge=0.0, le=1.0)
 
+
 class SearchResult(BaseModel):
     file_id: UUID
-    file_name: Optional[str]
-    file_type: Optional[str]
-    summary: Optional[str]
-    extracted_json: Optional[dict[str, Any]]
+    file_name: str | None
+    file_type: str | None
+    summary: str | None
+    extracted_json: dict[str, Any] | None
     similarity: float
+
 
 class SearchResponse(BaseModel):
     results: list[SearchResult]
+
+
+class RAGSearchResponse(BaseModel):
+    answer: str
+    sources: list[SearchResult]

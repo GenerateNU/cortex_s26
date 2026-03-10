@@ -1,6 +1,6 @@
 import pytest
-from app.services.extraction.csv_strategy import CsvExtractionStrategy
 
+from app.services.extraction.csv_strategy import CsvExtractionStrategy
 
 
 @pytest.fixture
@@ -21,7 +21,6 @@ def sales_csv():
         b"Globex,Conveyor Belt,8500\n"
         b"Initech,Sensor Array,3200\n"
     )
-
 
 
 @pytest.mark.asyncio
@@ -126,10 +125,14 @@ async def test_summary_is_non_empty_string(strategy, simple_csv):
     # ACT
     results = await strategy.extract_data(simple_csv, "sales.csv")
     # ASSERT
-    assert all(isinstance(r["result"]["summary"], str) and r["result"]["summary"] for r in results)
+    assert all(
+        isinstance(r["result"]["summary"], str) and r["result"]["summary"]
+        for r in results
+    )
 
 
 # ── _generate_summary ─────────────────────────────────────────────────────────
+
 
 def test_summary_includes_customer_value(strategy):
     """Summary contains the customer name when a customer column is present."""

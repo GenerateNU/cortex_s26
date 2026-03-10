@@ -11,7 +11,7 @@ class SchemaGenerationService:
     def generate_migrations(
         tenant_id: str,
         classifications: list[dict[str, Any]],
-        relationships: list[dict[str, Any]]
+        relationships: list[dict[str, Any]],
     ) -> list[str]:
         """
         Generates a list of SQL statements (migrations).
@@ -53,8 +53,8 @@ class SchemaGenerationService:
     @staticmethod
     def _sanitize_name(name: str) -> str:
         # Lowercase, replace spaces/special chars with underscores
-        clean = re.sub(r'[^a-zA-Z0-9]', '_', name.lower())
+        clean = re.sub(r"[^a-zA-Z0-9]", "_", name.lower())
         # Ensure starts with letter
         if not clean[0].isalpha():
             clean = "tbl_" + clean
-        return clean[:63] # Postgres limit
+        return clean[:63]  # Postgres limit

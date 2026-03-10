@@ -1,4 +1,5 @@
-from typing import Any, Optional
+import json
+from typing import Any
 from uuid import UUID
 
 from supabase._async.client import AsyncClient
@@ -13,32 +14,41 @@ class ClassificationService:
 
     async def get_classifications(self, tenant_id: UUID) -> list[dict[str, Any]]:
         """Fetch all classifications for a tenant."""
-        response = await self.supabase.table("classifications")\
-            .select("*")\
-            .eq("tenant_id", str(tenant_id))\
+        response = (
+            await self.supabase.table("classifications")
+            .select("*")
+            .eq("tenant_id", str(tenant_id))
             .execute()
+        )
         return response.data or []
 
-    async def create_classification(self, tenant_id: UUID, name: str, description: Optional[str] = None) -> dict[str, Any]:
+    async def create_classification(
+        self, tenant_id: UUID, name: str, description: str | None = None
+    ) -> dict[str, Any]:
         """Create a new classification."""
         # Check if exists
-        existing = await self.supabase.table("classifications")\
-            .select("*")\
-            .eq("tenant_id", str(tenant_id))\
-            .eq("name", name)\
+        existing = (
+            await self.supabase.table("classifications")
+            .select("*")
+            .eq("tenant_id", str(tenant_id))
+            .eq("name", name)
             .execute()
+        )
 
         if existing.data:
             return existing.data[0]
 
-        response = await self.supabase.table("classifications").insert({
-            "tenant_id": str(tenant_id),
-            "name": name
-        }).execute()
+        response = (
+            await self.supabase.table("classifications")
+            .insert({"tenant_id": str(tenant_id), "name": name})
+            .execute()
+        )
 
         return response.data[0] if response.data else None
 
-    async def create_classifications_batch(self, tenant_id: UUID, names: list[str]) -> list[dict[str, Any]]:
+    async def create_classifications_batch(
+        self, tenant_id: UUID, names: list[str]
+    ) -> list[dict[str, Any]]:
         """Create multiple classifications at once."""
         results = []
         for name in names:
@@ -63,11 +73,13 @@ class ClassificationService:
         # Check if 'file_uploads' table has 'classification_id'.
         # Based on setup_database.sql, 'file_uploads' has 'classification_id'.
 
-        files_resp = await self.supabase.table("file_uploads")\
-            .select("*, raw_files(file_name, file_link), extracted_files(summary)")\
-            .eq("tenant_id", str(tenant_id))\
-            .is_("classification_id", "null")\
+        files_resp = (
+            await self.supabase.table("file_uploads")
+            .select("*, raw_files(file_name, file_link), extracted_files(summary)")
+            .eq("tenant_id", str(tenant_id))
+            .is_("classification_id", "null")
             .execute()
+        )
 
         files_to_classify = files_resp.data or []
         classified_count = 0
@@ -86,8 +98,8 @@ class ClassificationService:
                 f"Summary: {summary}\n"
                 f"Available Classifications: {', '.join(class_names)}\n\n"
                 "Task: Assign the best matching classification from the list.\n"
-                "Return a JSON object: { \"classification\": \"Exact Name From List\" }\n"
-                "If none match well, return { \"classification\": null }"
+                'Return a JSON object: { "classification": "Exact Name From List" }\n'
+                'If none match well, return { "classification": null }'
             )
 
             try:
@@ -97,19 +109,22 @@ class ClassificationService:
                 # Just in case, let's handle the dict structure carefully.
 
                 content_str = response.choices[0].message.content
-                import json
                 result = json.loads(content_str)
                 best_class = result.get("classification")
 
                 if best_class and best_class in class_names:
                     # Find ID
-                    class_id = next(c["id"] for c in classifications if c["name"] == best_class)
+                    class_id = next(
+                        c["id"] for c in classifications if c["name"] == best_class
+                    )
 
                     # Update DB
-                    await self.supabase.table("file_uploads")\
-                        .update({"classification_id": class_id})\
-                        .eq("id", file_record["id"])\
+                    await (
+                        self.supabase.table("file_uploads")
+                        .update({"classification_id": class_id})
+                        .eq("id", file_record["id"])
                         .execute()
+                    )
                     classified_count += 1
             except Exception as e:
                 print(f"Failed to classify file {file_record['id']}: {e}")
@@ -124,11 +139,13 @@ class ClassificationService:
         PRD implies 2D/3D points. We'll return existing files grouped by classification.
         """
         # Fetch all files with classification
-        files_resp = await self.supabase.table("file_uploads")\
-            .select("id, name, classification_id, classifications(name)")\
-            .eq("tenant_id", str(tenant_id))\
-            .not_.is_("classification_id", "null")\
+        files_resp = (
+            await self.supabase.table("file_uploads")
+            .select("id, name, classification_id, classifications(name)")
+            .eq("tenant_id", str(tenant_id))
+            .not_.is_("classification_id", "null")
             .execute()
+        )
 
         data = files_resp.data or []
 

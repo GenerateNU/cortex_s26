@@ -36,7 +36,9 @@ class RelationshipRepository:
             .insert(
                 {
                     "tenant_id": str(new_relationship.tenant_id),
-                    "from_classification_id": str(new_relationship.from_classification_id),
+                    "from_classification_id": str(
+                        new_relationship.from_classification_id
+                    ),
                     "to_classification_id": str(new_relationship.to_classification_id),
                     "type": new_relationship.type,
                 }

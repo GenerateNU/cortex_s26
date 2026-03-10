@@ -12,11 +12,13 @@ class MigrationService:
         self.supabase = supabase
 
     async def list_migrations(self, tenant_id: UUID) -> list[dict[str, Any]]:
-        response = await self.supabase.table("migrations")\
-            .select("*")\
-            .eq("tenant_id", str(tenant_id))\
-            .order("sequence", desc=False)\
+        response = (
+            await self.supabase.table("migrations")
+            .select("*")
+            .eq("tenant_id", str(tenant_id))
+            .order("sequence", desc=False)
             .execute()
+        )
         return response.data or []
 
     async def generate_migrations(self, tenant_id: UUID) -> list[dict[str, Any]]:
@@ -24,7 +26,12 @@ class MigrationService:
         Generates pending migrations based on current state.
         """
         # 1. Fetch Classifications
-        c_resp = await self.supabase.table("classifications").select("*").eq("tenant_id", str(tenant_id)).execute()
+        c_resp = (
+            await self.supabase.table("classifications")
+            .select("*")
+            .eq("tenant_id", str(tenant_id))
+            .execute()
+        )
         classifications = c_resp.data or []
 
         # 2. Fetch Relationships (Mocking structure for now as logic is simple)
@@ -32,7 +39,9 @@ class MigrationService:
         relationships = r_resp.data or []
 
         # 3. Generate SQL
-        sqls = SchemaGenerationService.generate_migrations(str(tenant_id), classifications, relationships)
+        sqls = SchemaGenerationService.generate_migrations(
+            str(tenant_id), classifications, relationships
+        )
 
         # 4. Store in DB as pending migrations
         # Get next sequence
@@ -44,13 +53,19 @@ class MigrationService:
             # Check if this SQL already exists to avoid duplicates?
             # For now, just insert.
             name = f"auto_gen_{next_seq + i}"
-            res = await self.supabase.table("migrations").insert({
-                "tenant_id": str(tenant_id),
-                "name": name,
-                "sql": sql,
-                "sequence": next_seq + i,
-                "executed_at": None
-            }).execute()
+            res = (
+                await self.supabase.table("migrations")
+                .insert(
+                    {
+                        "tenant_id": str(tenant_id),
+                        "name": name,
+                        "sql": sql,
+                        "sequence": next_seq + i,
+                        "executed_at": None,
+                    }
+                )
+                .execute()
+            )
             if res.data:
                 created_migrations.append(res.data[0])
 
@@ -60,14 +75,16 @@ class MigrationService:
         """
         Executes pending migrations.
         """
-        pending = await self.supabase.table("migrations")\
-            .select("*")\
-            .eq("tenant_id", str(tenant_id))\
-            .is_("executed_at", "null")\
-            .order("sequence")\
+        pending = (
+            await self.supabase.table("migrations")
+            .select("*")
+            .eq("tenant_id", str(tenant_id))
+            .is_("executed_at", "null")
+            .order("sequence")
             .execute()
+        )
 
-        for migration in (pending.data or []):
+        for migration in pending.data or []:
             sql = migration["sql"]
             # Execute SQL
             # DANGER: Supabase-js/py client doesn't support raw SQL easily unless we use an RPC
@@ -85,10 +102,13 @@ class MigrationService:
 
                 # Update status
                 from datetime import datetime
-                await self.supabase.table("migrations")\
-                    .update({"executed_at": datetime.now().isoformat()})\
-                    .eq("id", migration["id"])\
+
+                await (
+                    self.supabase.table("migrations")
+                    .update({"executed_at": datetime.now().isoformat()})
+                    .eq("id", migration["id"])
                     .execute()
+                )
 
             except Exception as e:
                 print(f"Migration failed: {e}")
@@ -99,16 +119,24 @@ class MigrationService:
         """
         Mock data loading.
         """
-        return {"status": "success", "message": "Data loaded (simulated)", "tables_updated": []}
+        return {
+            "status": "success",
+            "message": "Data loaded (simulated)",
+            "tables_updated": [],
+        }
 
     async def get_connection_url(self, tenant_id: UUID) -> dict[str, Any]:
         # Return a constructed URL for the tenant schema
         # This is for display purposes in the UI
-        project_ref = os.getenv("SUPABASE_URL", "https://xyz.supabase.co").split("//")[1].split(".")[0]
+        project_ref = (
+            os.getenv("SUPABASE_URL", "https://xyz.supabase.co")
+            .split("//")[1]
+            .split(".")[0]
+        )
         return {
             "tenant_id": str(tenant_id),
             "schema_name": f"tenant_{str(tenant_id).replace('-', '_')}",
             "connection_url": f"postgres://postgres:[YOUR-PASSWORD]@db.{project_ref}.supabase.co:5432/postgres",
             "includes_public_schema": True,
-            "note": "Use the schema_name in your search_path"
+            "note": "Use the schema_name in your search_path",
         }

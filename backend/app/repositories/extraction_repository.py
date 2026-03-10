@@ -27,7 +27,9 @@ class ExtractionRepository:
         )
         return UUID(response.data[0]["file_id"])
 
-    async def update_status(self, file_id: UUID, status: str, error_message: str = None) -> None:
+    async def update_status(
+        self, file_id: UUID, status: str, error_message: str = None
+    ) -> None:
         """
         Updates the summary/status of the extraction.
         NOTE: The new schema doesn't have a specific 'status' column,
@@ -49,9 +51,9 @@ class ExtractionRepository:
     async def update_extraction_result(
         self,
         file_id: UUID,
-        extracted_data: dict, # wrapper containing file_type, summary, extracted_json
+        extracted_data: dict,  # wrapper containing file_type, summary, extracted_json
         embedding: list[float],
-        file_name: str
+        file_name: str,
     ) -> None:
         """
         Updates the extraction result with the final data, summary, classification, and embedding.
@@ -85,7 +87,7 @@ class ExtractionRepository:
         file_name: str,
         extracted_data: dict,
         embedding: list[float],
-        row_index: int = None
+        row_index: int = None,
     ) -> UUID:
         """
         Creates a NEW entry in extracted_files (used for CSV rows).
@@ -151,4 +153,9 @@ class ExtractionRepository:
             raise
 
     async def delete_by_file_id(self, file_id: UUID) -> None:
-        await self.supabase.table("extracted_files").delete().eq("file_id", str(file_id)).execute()
+        await (
+            self.supabase.table("extracted_files")
+            .delete()
+            .eq("file_id", str(file_id))
+            .execute()
+        )
