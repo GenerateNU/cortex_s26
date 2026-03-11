@@ -25,19 +25,19 @@ class PatternRecognitionService:
         # 1. Fetch unlinked files (file_relationships is empty for them)
         # However, supabase filtering for "doesn't have relation" is hard.
         # Let's get all files and then check? Or just get recent ones?
-        # For MVP, let's process ALL files that have a summary.
+        # For MVP, let's process ALL files that have extracted_json data.
 
         files_resp = await self.supabase.table("extracted_files")\
-            .select("file_id, summary")\
+            .select("file_id, extracted_json")\
             .execute()
 
         files = files_resp.data or []
         results = []
 
         for f in files:
-            summary = f.get("summary")
+            extracted_json = f.get("extracted_json")
             file_id = f.get("file_id")
-            if not summary:
+            if not extracted_json:
                 continue
 
             # Check if linked
@@ -49,14 +49,14 @@ class PatternRecognitionService:
             if linked_resp.data:
                 continue # Already linked
 
-            await self.detect_and_link(file_id, summary)
+            await self.detect_and_link(file_id, extracted_json)
             results.append({"file_id": file_id, "status": "linked"})
 
         return results
 
-    async def detect_and_link(self, file_id: UUID, summary: str, manual_context: str = None) -> None:
+    async def detect_and_link(self, file_id: UUID, extracted_json: dict, manual_context: str = None) -> None:
         """
-        Detects relationships for a file based on its summary and links them.
+        Detects relationships for a file based on its extracted JSON and links them.
         """
         # 1. Fetch existing relationships to avoid duplicates
         response = await self.supabase.table("relationships").select("relationship_name, relationship_description").execute()
@@ -65,8 +65,11 @@ class PatternRecognitionService:
         existing_list_str = "\n".join([f"- {r['relationship_name']}: {r['relationship_description']}" for r in existing_relationships])
 
         # 2. Ask LLM
+        # Convert dictionary to a readable JSON string for the prompt
+        extracted_data_str = json.dumps(extracted_json, indent=2) if isinstance(extracted_json, dict) else str(extracted_json)
+        
         prompt = (
-            f"Document Summary: \"{summary}\"\n"
+            f"Document Extracted Data:\n{extracted_data_str}\n"
             f"Manual Context (if any): \"{manual_context or 'None'}\"\n\n"
             f"Existing Relationships:\n{existing_list_str}\n\n"
             "Task:\n"
