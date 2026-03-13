@@ -18,7 +18,7 @@ class SearchService:
         )
 
     async def search(
-        self, query: str, limit: int = 5, threshold: float = 0.5
+        self, query: str, limit: int = 5, threshold: float = 0.3
     ) -> list[dict[str, Any]]:
         """
         Semantic search for extracted files.
@@ -28,8 +28,9 @@ class SearchService:
 
         # 2. Call RPC function
         response = await self.supabase.rpc(
-            "match_extracted_files",
+            "hybrid_search",
             {
+                "query_text": query,  # Plain text (for keyword search)
                 "query_embedding": query_embedding,
                 "match_threshold": threshold,
                 "match_count": limit,
@@ -39,7 +40,7 @@ class SearchService:
         return response.data or []
 
     async def rag_search(
-        self, query: str, limit: int = 5, threshold: float = 0.5
+        self, query: str, limit: int = 5, threshold: float = 0.3
     ) -> dict[str, Any]:
         """
         Semantic search followed by grounded answer generation.
