@@ -4,7 +4,6 @@ from typing import Any
 from supabase._async.client import AsyncClient
 
 from app.core.litellm import LLMClient
-from app.services.extraction.embeddings import generate_embedding
 
 
 class SearchService:
@@ -55,8 +54,7 @@ class SearchService:
         if "extracted_files" not in sql_query.lower():
             raise ValueError("Generated SQL query does not reference the 'extracted_files' table.")
         if any(keyword in sql_query.lower() for keyword in ["delete", "update", "insert", "drop", "alter"]):
-            raise ValueError("Generated SQL query contains potentially harmful statements.")    
-
+            raise ValueError("Generated SQL query contains potentially harmful statements.")
 
         # 3. Execute SQL query
         response = await self.supabase.rpc(
