@@ -179,6 +179,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      hybrid_search: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+          query_text: string
+        }
+        Returns: {
+          extracted_json: Json
+          file_id: string
+          file_name: string
+          file_type: Database["public"]["Enums"]["file_type_enum"]
+          similarity: number
+          summary: string
+        }[]
+      }
       match_extracted_files: {
         Args: {
           match_count: number
