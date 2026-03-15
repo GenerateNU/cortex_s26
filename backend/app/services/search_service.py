@@ -10,30 +10,50 @@ from app.services.extraction.embeddings import generate_embedding
 class SearchService:
     def __init__(self, supabase: AsyncClient):
         self.supabase = supabase
-        self.llm = LLMClient()
-        self.llm.set_system_prompt(
+        self.rag_llm = LLMClient()
+        self.rag_llm.set_system_prompt(
             "You are a retrieval-augmented assistant. Answer strictly from the provided "
             "documents. If the documents do not contain enough information, say so plainly. "
             "Cite supporting evidence by document number such as [Document 1]. Do not invent facts."
+        )
+        self.sql_generation_llm = LLMClient()
+        self.sql_generation_llm.set_system_prompt(
+            "You are a helpful assistant for translating natural language queries into SQL. "
+            "The database has a single table named 'extracted_files' with the following columns:"
+            " - file_id: UUID"
+            " - summary: TEXT"
+            " - extracted_json: JSONB"
+            " - processed_at"
+            " - file_name: TEXT"
+            " - embedding"
+            " - file_type: TEXT"
+            "Given a natural language query, generate a SQL query that retrieves relevant rows from the" "extracted_files table."
+            "Limit the number of results to a reasonable number."
         )
 
     async def search(
         self, query: str, limit: int = 5, threshold: float = 0.5
     ) -> list[dict[str, Any]]:
         """
-        Semantic search for extracted files.
+        Use an LLM to translate natural language query into a SQL query.
         """
-        # 1. Generate embedding for query
-        query_embedding = await generate_embedding(query)
+        # 1. Use LLM to generate SQL query
+        sql_query_response = await self.sql_generation_llm.chat(
+            f"Translate the following natural language query into a SQL query that retrieves relevant rows from the 'extracted_files' table. The query is: '{query}'."
+        )
+        sql_query = sql_query_response.choices[0].message.content.strip()
 
-        # 2. Call RPC function
+        # 2. Validate SQL query - check it only references the 'extracted_files' table and does not contain any harmful statements
+        if "extracted_files" not in sql_query.lower():
+            raise ValueError("Generated SQL query does not reference the 'extracted_files' table.")
+        if any(keyword in sql_query.lower() for keyword in ["delete", "update", "insert", "drop", "alter"]):
+            raise ValueError("Generated SQL query contains potentially harmful statements.")    
+
+
+        # 3. Execute SQL query
         response = await self.supabase.rpc(
-            "match_extracted_files",
-            {
-                "query_embedding": query_embedding,
-                "match_threshold": threshold,
-                "match_count": limit,
-            },
+            "execute_sql",
+            {"query": sql_query}
         ).execute()
 
         return response.data or []
@@ -65,7 +85,7 @@ class SearchService:
             )
 
         context = "\n\n".join(context_parts)
-        response = await self.llm.chat(
+        response = await self.rag_llm.chat(
             f"User query:\n{query}\n\n"
             f"Retrieved documents:\n{context}\n\n"
             "Answer the query using only the retrieved documents. Cite document numbers "

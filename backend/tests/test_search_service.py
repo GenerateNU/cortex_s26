@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -15,7 +15,7 @@ async def test_rag_search_returns_answer_and_sources():
             "file_name": "robot_spec.pdf",
             "file_type": "Product Spec",
             "summary": "Spec for an industrial robot arm.",
-            "extracted_json": {"manufacturer": "FANUC", "payload": "25kg"},
+            "extracted_json": {"manufacturer": "FANUC","payload": "25kg"},
             "similarity": 0.91,
         }
     ]
@@ -38,7 +38,7 @@ async def test_rag_search_returns_answer_and_sources():
             },
         )()
     ]
-    service.llm.chat = AsyncMock(return_value=fake_llm_response)
+    service.rag_llm.chat = AsyncMock(return_value=fake_llm_response)
 
     result = await service.rag_search("What is this document about?")
 
@@ -48,4 +48,52 @@ async def test_rag_search_returns_answer_and_sources():
     )
     assert result["sources"] == fake_results
     service.search.assert_awaited_once()
-    service.llm.chat.assert_awaited_once()
+    service.rag_llm.chat.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_sql_search_calls_execute_sql_rpc():
+    """SQL search calls execute_sql RPC with generated SQL query"""
+
+    # ARRANGE
+    mock_supabase = AsyncMock()
+
+    mock_execute_result = MagicMock()
+    mock_execute_result.data = []
+
+    mock_rpc_result = MagicMock()
+    mock_rpc_result.execute = AsyncMock(return_value=mock_execute_result)
+
+    mock_supabase.rpc = MagicMock(return_value=mock_rpc_result)
+
+    service = SearchService(supabase=mock_supabase)
+
+    fake_sql = "SELECT * FROM extracted_files LIMIT 5"
+
+    mock_llm_response = MagicMock()
+    mock_llm_response.choices = [
+        MagicMock(message=MagicMock(content=fake_sql))
+    ]
+
+    # ACT
+    with patch.object(
+        service.sql_generation_llm,
+        "chat",
+        new_callable=AsyncMock,
+        return_value=mock_llm_response
+    ):
+        await service.search("find documents about fryers")
+
+    # ASSERT
+    mock_supabase.rpc.assert_called_once()
+
+    call_args, call_kwargs = mock_supabase.rpc.call_args
+
+    # Check RPC function name
+    assert call_args[0] == "execute_sql"
+
+    # Check parameters
+    params = call_args[1] if len(call_args) > 1 else call_kwargs
+
+    assert "query" in params
+    assert params["query"] == fake_sql
