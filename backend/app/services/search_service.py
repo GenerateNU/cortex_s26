@@ -18,17 +18,25 @@ class SearchService:
         )
         self.sql_generation_llm = LLMClient()
         self.sql_generation_llm.set_system_prompt(
-            "You are a helpful assistant for translating natural language queries into SQL. "
-            "The database has a single table named 'extracted_files' with the following columns:"
-            " - file_id: UUID"
-            " - summary: TEXT"
-            " - extracted_json: JSONB"
-            " - processed_at"
-            " - file_name: TEXT"
-            " - embedding"
-            " - file_type: TEXT"
-            "Given a natural language query, generate a SQL query that retrieves relevant rows from the" "extracted_files table."
-            "Limit the number of results to a reasonable number."
+            "You translate natural language queries into SQL.\n"
+            "The database has one table named 'extracted_files' with the following columns:\n"
+            " - file_id (UUID)\n"
+            " - file_name (TEXT)\n"
+            " - summary (TEXT)\n"
+            " - extracted_json (JSONB)\n"
+            " - processed_at (TIMESTAMP)\n"
+            " - embedding (VECTOR)\n"
+            " - file_type (TEXT)\n\n"
+            "Rules:\n"
+            "1. Only generate SELECT queries.\n"
+            "2. Always query the table 'extracted_files'.\n"
+            "3. Always return the following columns exactly:\n"
+            "   file_id, file_name, summary, extracted_json.\n"
+            "4. Do not return other columns.\n"
+            "5. Use WHERE clauses to filter results based on the user's query.\n"
+            "6. Limit results to at most 10 rows.\n"
+            "7. Do NOT include explanations, comments, or markdown.\n"
+            "8. Return ONLY the SQL query.\n"
         )
 
     async def search(

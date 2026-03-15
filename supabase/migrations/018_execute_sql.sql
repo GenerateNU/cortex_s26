@@ -18,10 +18,17 @@ AS $$
 DECLARE
     result JSON;
 BEGIN
-    -- Wrap query so results are returned as JSON array
-    EXECUTE format('SELECT json_agg(t) FROM (%s) t', query) INTO result;
+    RETURN QUERY EXECUTE format(
+    'SELECT
+        file_id,
+        file_name,
+        file_type,
+        summary,
+        extracted_json
+     FROM (%s) q',
+    query
+  );
 
-    RETURN COALESCE(result, '[]'::json);
 END;
 $$;
 
