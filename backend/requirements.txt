@@ -29,9 +29,9 @@ sentence-transformers==3.3.1
 hdbscan>=0.8.33
 
 # Cognee
+cognee>=0.5.5
 cognee[postgres]
 cognee[gemini]
-cognee
 
 # docling==2.55.1
 # docling-core==2.48.4
