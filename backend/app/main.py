@@ -26,6 +26,7 @@ from app.core.supabase import get_async_supabase  # noqa: E402
 from app.core.webhooks import configure_webhooks  # noqa: E402
 from app.services.extraction.preprocessing_queue import init_queue  # noqa: E402
 from app.services.supabase_check import wait_for_supabase  # noqa: E402
+from app.cognee_config import setup_cognee 
 
 
 @asynccontextmanager
@@ -39,6 +40,8 @@ async def lifespan(app: FastAPI):
     await configure_webhooks(supabase)
 
     await init_queue(supabase)
+
+    await setup_cognee()
 
     yield
     # Shutdown (if needed)
