@@ -1,4 +1,7 @@
 # {PR Title}
+<!-- Title format: <type>: <short description> (#issue)  -->
+<!-- Types: feat | fix | chore | docs | test              -->
+<!-- Example: feat: build knowledge search service (#35)  -->
 
 🎫 Closes # <!-- Link the GitHub issue number here — required for Claude's auto code review -->
 
