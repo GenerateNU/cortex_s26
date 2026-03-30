@@ -35,3 +35,6 @@ docker-compose.override.yml
 kong.yml
 
 .DS_Store
+
+# Cognee / Kuzu graph store (runtime data, do not commit)
+.cognee_system/
