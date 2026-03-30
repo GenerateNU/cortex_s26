@@ -1,12 +1,3 @@
-"""
-add all Cognee-related environment variables to .env and create app/cognee_config.py with the setup_cognee() async initializer. Wire it into the FastAPI lifespan. With Kuzu as the graph store there are no graph credentials to manage — the env var list is shorter and cognee_config.py is simpler than originally planned. 
-
-app/cognee_config.py exists with setup_cognee() configuring LLM, embeddings, vector store, and relational store only — no graph config block
-
-_cognee_initialized guard prevents double-initialization
-
-setup_cognee() is called inside FastAPI lifespan in app/main.py — no check_neo4j() call needed
-"""
 import os
 from cognee import configure
 
