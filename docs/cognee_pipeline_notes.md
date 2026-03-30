@@ -1,5 +1,18 @@
 # Cognee Pipeline Notes
 
+## The `cognify()` Pipeline
+
+`cognify()` runs a five-stage pipeline. Each stage feeds its output into the next:
+
+1. **Classify documents** — identify document types and wrap them as Document objects with metadata
+2. **Extract chunks** — split documents into token-sized pieces using the configured chunker (default: `TextChunker`, default size: 1024 tokens)
+3. **Extract graph** — send each chunk to the LLM to identify entities and relationships, then write them as nodes and edges in the graph database
+4. **Summarize text** — generate summaries for each chunk, stored as TextSummary data points
+5. **Add data points** — embed all nodes and summaries into the vector store and finalize graph edges
+
+`cognify()` is incremental — re-running it skips documents that have already been processed.
+
+
 ## How `cognify()` Chunks a Document
 
 The first processing step is splitting your document into smaller text segments called **chunks**. The default `TextChunker` works in two steps:
