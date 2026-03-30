@@ -1,6 +1,6 @@
 # {PR Title}
 
-🎫 [Jira Ticket](ticket-url) 
+🎫 Closes # <!-- Link the GitHub issue number here — required for Claude's auto code review -->
 
 ## 🖹 Description
 **What changed:**
