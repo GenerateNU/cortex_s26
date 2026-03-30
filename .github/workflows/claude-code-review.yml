@@ -3,6 +3,11 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
     # Optional: Only run on specific file changes
     # paths:
     #   - "src/**/*.ts"
@@ -40,7 +45,7 @@ jobs:
           plugins: 'code-review@claude-code-plugins'
           prompt: |
             Before running the code review, check for linked tickets:
-            1. Run `gh pr view ${{ github.event.pull_request.number }} --json body,title`
+            1. Run `gh pr view ${{ github.event.pull_request.number || inputs.pr_number }} --json body,title`
             2. Extract any referenced issue numbers (Closes #, Fixes #, or just #)
             3. For each linked issue, run:
                `gh issue view <number> --json title,body,labels,comments`
@@ -48,7 +53,7 @@ jobs:
                Note anything missing, incomplete, or out of scope.
 
             Post your ticket compliance findings first, then run:
-            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr_number }}
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
