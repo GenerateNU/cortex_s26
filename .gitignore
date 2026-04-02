@@ -36,5 +36,6 @@ kong.yml
 
 .DS_Store
 
-# Cognee / Kuzu graph store (runtime data, do not commit)
+# Cognee
 .cognee_system/
+.data_storage/
