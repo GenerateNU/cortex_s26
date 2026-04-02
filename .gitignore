@@ -33,3 +33,8 @@ docker-compose.override.yml
 # Supabase
 .env.supabase.local
 kong.yml
+
+.DS_Store
+
+# Cognee / Kuzu graph store (runtime data, do not commit)
+.cognee_system/
