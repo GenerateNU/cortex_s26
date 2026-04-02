@@ -1,6 +1,9 @@
 # {PR Title}
+<!-- Title format: <type>: <short description> (#issue)  -->
+<!-- Types: feat | fix | chore | docs | test              -->
+<!-- Example: feat: build knowledge search service (#35)  -->
 
-🎫 [Jira Ticket](ticket-url) 
+🎫 Closes # <!-- Link the GitHub issue number here — required for Claude's auto code review -->
 
 ## 🖹 Description
 **What changed:**
