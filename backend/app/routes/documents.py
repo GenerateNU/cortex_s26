@@ -6,14 +6,12 @@ Stub endpoints with hardcoded responses for now.
 import shutil
 import uuid
 from pathlib import Path
-from typing import Optional
-
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
-from pydantic import BaseModel
 
 from backend.app.services.ingest import (
     ingest_document_background,
 )
+from fastapi import APIRouter, BackgroundTasks, File, Query, UploadFile
+from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
 # Pydantic response models
@@ -24,15 +22,15 @@ class UploadResponse(BaseModel):
     status: str
     document_id: str
     dataset: str
-    summary: Optional[str] = ""
-    entities: Optional[list[str]] = []
-    raw_chunks_count: Optional[int] = 0
+    summary: str | None = ""
+    entities: list[str] | None = []
+    raw_chunks_count: int | None = 0
     error: str = ""
 
 
 class SearchResult(BaseModel):
     text: str
-    score: Optional[float] = None
+    score: float | None = None
     metadata: dict = {}
 
 
@@ -86,7 +84,7 @@ async def upload_document(
             document_id=document_id,
             dataset=dataset_name,
         )
-    
+
     return UploadResponse(
         status="ok",
         document_id=document_id,
@@ -97,7 +95,7 @@ async def upload_document(
 @router.get("/search", response_model=SearchResponse)
 async def search_documents(
     q: str = Query(..., description="Search query text"),
-    dataset: Optional[str] = Query(default=None, description="Filter by dataset"),
+    dataset: str | None = Query(default=None, description="Filter by dataset"),
     limit: int = Query(default=20, description="Max results to return"),
 ):
     """
