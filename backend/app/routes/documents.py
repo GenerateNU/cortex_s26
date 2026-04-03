@@ -18,9 +18,9 @@ class UploadResponse(BaseModel):
     status: str
     document_id: str
     dataset: str
-    summary: str = ""
-    entities: list[str] = []
-    raw_chunks_count: int = 0
+    summary: Optional[str] = ""
+    entities: Optional[list[str]] = []
+    raw_chunks_count: Optional[int] = 0
     error: str = ""
 
 
@@ -55,12 +55,20 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 async def upload_document(
     file: UploadFile = File(...),
     dataset_name: str = Query(default="main"),
+    use_background: bool = Query(default=False)
 ):
     """
     Upload a document for Cognee processing.
     Currently returns a hardcoded placeholder response.
     Real logic will be wired in TICKET-10.
     """
+    if use_background:
+        return UploadResponse(
+            status="processing",
+            document_id="test-123",
+            dataset=dataset_name,
+        )
+    
     return UploadResponse(
         status="ok",
         document_id="test-123",
