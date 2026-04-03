@@ -1,5 +1,5 @@
 """
-Cognee service: document processing and knowledge-graph search.
+Ingest service: document processing with cognee.
 """
 
 from __future__ import annotations

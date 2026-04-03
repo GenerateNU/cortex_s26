@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
-from app.services.cognee_service import (
+from backend.app.services.ingest import (
     ingest_document_background,
 )
 
