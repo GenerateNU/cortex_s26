@@ -1,6 +1,5 @@
 
 import asyncio
-import os
 from supabase._async.client import create_client
 
 # Local Supabase credentials inside Docker or accessible from within
