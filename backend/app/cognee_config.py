@@ -1,4 +1,5 @@
 import os
+
 from cognee import configure
 
 _cognee_initialized: bool = False
@@ -14,7 +15,7 @@ async def setup_cognee() -> None:
     llm_model = os.getenv("LLM_MODEL")
     llm_api_key = os.getenv("LLM_API_KEY")
 
-    # Embeddings 
+    # Embeddings
     embedding_provider = os.getenv("EMBEDDING_PROVIDER")
     embedding_model = os.getenv("EMBEDDING_MODEL")
     embedding_api_key = os.getenv("EMBEDDING_API_KEY")
