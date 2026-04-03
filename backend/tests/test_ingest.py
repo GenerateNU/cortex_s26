@@ -14,7 +14,7 @@ from app.services.ingest import ingest_document
 async def test_ingest_document_success():
     """Test that ingesting a real PDF returns success with structured data."""
     result = await ingest_document(
-        file_path="path/to/test.pdf",  # Replace with a real PDF
+        file_path="../mock_data/DeepFryer-1.pdf",  # Replace with a real PDF
         dataset_name="test-dataset",
     )
 
