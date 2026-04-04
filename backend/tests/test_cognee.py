@@ -2,10 +2,10 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-import asyncio
+import asyncio  # noqa: E402
 
-import cognee
-from cognee import SearchType
+import cognee  # noqa: E402
+from cognee.api.v1.search import SearchType  # noqa: E402
 
 
 async def setup_cognee():
