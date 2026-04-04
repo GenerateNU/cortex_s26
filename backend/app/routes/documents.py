@@ -1,13 +1,16 @@
 """
 Document routes for Cognee-powered document upload and search.
-Stub endpoints with hardcoded responses for now.
 """
 
+import shutil
+import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel
+
+from app.services.cognee_service import ingest_document, search_knowledge_graph
 
 # ---------------------------------------------------------------------------
 # Pydantic response models
@@ -57,15 +60,39 @@ async def upload_document(
     dataset_name: str = Query(default="main"),
 ):
     """
-    Upload a document for Cognee processing.
-    Currently returns a hardcoded placeholder response.
-    Real logic will be wired in TICKET-10.
+    Upload a document, ingest it into Cognee, and return structured results.
     """
-    return UploadResponse(
-        status="ok",
-        document_id="test-123",
-        dataset=dataset_name,
-    )
+    document_id = str(uuid.uuid4())
+    suffix = Path(file.filename).suffix if file.filename else ".bin"
+    temp_path = UPLOAD_DIR / f"{document_id}{suffix}"
+
+    try:
+        # Save uploaded file to disk
+        with temp_path.open("wb") as f:
+            shutil.copyfileobj(file.file, f)
+        file.file.close()
+
+        # Ingest into Cognee
+        result = await ingest_document(str(temp_path), dataset_name=dataset_name)
+
+        return UploadResponse(
+            status="ok",
+            document_id=document_id,
+            dataset=dataset_name,
+            summary=result["summary"],
+            entities=result["entities"],
+            raw_chunks_count=result["raw_chunks_count"],
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+
+    finally:
+        # Clean up temp file — never leave orphans
+        try:
+            temp_path.unlink(missing_ok=True)
+        except Exception:
+            pass  # Non-fatal
 
 
 @router.get("/search", response_model=SearchResponse)
@@ -75,13 +102,20 @@ async def search_documents(
     limit: int = Query(default=20, description="Max results to return"),
 ):
     """
-    Search documents via the Cognee knowledge graph.
-    Currently returns a hardcoded empty results list.
-    Real logic will be wired in TICKET-10.
+    Search the Cognee knowledge graph and return matching results.
     """
-    return SearchResponse(
-        query=q,
-        results=[],
-        total=0,
-    )
+    try:
+        raw_results = await search_knowledge_graph(
+            query_text=q, dataset=dataset, limit=limit
+        )
 
+        results = [SearchResult(**r) for r in raw_results]
+
+        return SearchResponse(
+            query=q,
+            results=results,
+            total=len(results),
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
