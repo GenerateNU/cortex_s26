@@ -9,6 +9,8 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
+from cognee import SearchType
+
 from app.services.cognee_service import ingest_document, search_knowledge_graph
 from app.services.ingest import ingest_document_background
 
@@ -110,13 +112,17 @@ async def search_documents(
     q: str = Query(..., description="Search query text"),
     dataset: str | None = Query(default=None, description="Filter by dataset"),
     limit: int = Query(default=20, description="Max results to return"),
+    search_type: SearchType = Query(
+        default=SearchType.GRAPH_COMPLETION,
+        description="Cognee search type: GRAPH_COMPLETION, CHUNKS, SUMMARIES, INSIGHTS, GRAPH_COMPLETION_COT",
+    ),
 ):
     """
     Search the Cognee knowledge graph and return matching results.
     """
     try:
         raw_results = await search_knowledge_graph(
-            query_text=q, dataset=dataset, limit=limit
+            query_text=q, dataset=dataset, limit=limit, search_type=search_type
         )
 
         results = [SearchResult(**r) for r in raw_results]
