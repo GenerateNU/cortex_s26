@@ -3,12 +3,17 @@ Document routes for Cognee-powered document upload and search.
 Stub endpoints with hardcoded responses for now.
 """
 
+import os
 import shutil
 import uuid
 from pathlib import Path
 
 from backend.app.services.ingest import (
     ingest_document_background,
+)
+from backend.app.services.storage import (
+    download_file_cloudflare,
+    upload_file_cloudflare,
 )
 from fastapi import APIRouter, BackgroundTasks, File, Query, UploadFile
 from pydantic import BaseModel
@@ -71,6 +76,8 @@ async def upload_document(
     suffix = Path(file.filename).suffix
     temp_path = UPLOAD_DIR / f"{document_id}{suffix}"
 
+    upload_file_cloudflare(temp_path, bucket=os.getenv("CLOUDFLARE_R2_BUCKET_NAME"), key=f"{dataset_name}/{document_id}{suffix}")
+
     try:
         with temp_path.open("wb") as f:
             shutil.copyfileobj(file.file, f)
@@ -109,3 +116,11 @@ async def search_documents(
         total=0,
     )
 
+@router.get("/{document_id}", response_model=bytes)
+async def get_document(document_id: str, dataset: str):
+    """
+    Download a document by ID.
+    """
+    key = f"{dataset}/{document_id}"
+    file_bytes = await download_file_cloudflare(bucket=os.getenv("CLOUDFLARE_R2_BUCKET_NAME"), key=key)
+    return file_bytes
