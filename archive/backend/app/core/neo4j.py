@@ -1,8 +1,9 @@
 # app/core/neo4j.py
 import os
+
 from app.repositories.graph_repository import GraphRepository
 
-_graph_repo: GraphRepository 
+_graph_repo: GraphRepository
 
 
 def get_graph_repo() -> GraphRepository | None:

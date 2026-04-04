@@ -1,14 +1,17 @@
 from dotenv import load_dotenv
+
 load_dotenv(override=True)
 
-import cognee
 import asyncio
+
+import cognee
 from cognee.api.v1.search import SearchType
+
 
 async def setup_cognee():
     """Initialize cognee environment."""
     pass
-    
+
 async def ingest_document(files):
     """Ingest documents"""
     for file in files:
@@ -41,7 +44,7 @@ async def search_knowledge_graph():
 
 async def main():
     files = ["mock_data/DeepFryer-1.pdf", "mock_data/DeepFryer-2.pdf"]
-    
+
     await setup_cognee()
     await ingest_document(files)
 
