@@ -408,21 +408,21 @@ function InsightsTab({ insights }: { insights: string[] }) {
         return (
           <div
             key={idx}
-            className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:border-white/20 transition-colors"
+            className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:border-white/20 transition-colors overflow-hidden"
           >
             {arrows && parts.length > 1 ? (
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-start gap-1.5">
                 {parts.map((part, i) => (
-                  <span key={i} className="flex items-center gap-1.5">
-                    <span className="text-sm text-white/80">{part.trim()}</span>
+                  <span key={i} className="flex items-start gap-1.5 min-w-0">
+                    <span className="text-sm text-white/80 break-words min-w-0">{part.trim()}</span>
                     {i < parts.length - 1 && (
-                      <span className="text-violet-400 font-semibold text-sm">→</span>
+                      <span className="text-violet-400 font-semibold text-sm flex-shrink-0">→</span>
                     )}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-white/80 leading-relaxed">{insight}</p>
+              <p className="text-sm text-white/80 leading-relaxed break-words">{insight}</p>
             )}
           </div>
         )
@@ -445,7 +445,7 @@ function EntitiesTab({ entities }: { entities: string[] }) {
       {entities.map((entity, idx) => (
         <span
           key={idx}
-          className="border border-white/15 bg-white/5 rounded-full px-3 py-1 text-sm text-zinc-300"
+          className="border border-white/15 bg-white/5 rounded-full px-3 py-1 text-sm text-zinc-300 break-words max-w-full"
         >
           {entity}
         </span>

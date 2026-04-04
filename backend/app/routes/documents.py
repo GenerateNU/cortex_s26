@@ -44,10 +44,18 @@ class UploadResponse(BaseModel):
     uploaded: list[UploadedFile]
 
 
+class DocumentSource(BaseModel):
+    id: str
+    original_filename: str
+    document_type: str | None = None
+    dataset_name: str
+
+
 class SearchResult(BaseModel):
     text: str
     score: float | None = None
-    metadata: dict = {}
+    dataset_name: str | None = None
+    sources: list[DocumentSource] = []
 
 
 class SearchResponse(BaseModel):
@@ -154,19 +162,59 @@ async def search_documents(
     ),
 ):
     """
-    Search the Cognee knowledge graph and return matching results.
-    Each result includes dataset metadata from the source document.
+    Search the Cognee knowledge graph. Each result includes up to 3 source
+    documents from the matching dataset so the frontend can show provenance.
     """
+    import os
+    from supabase import create_client
+
     try:
         raw_results = await search_knowledge_graph(
             query_text=q, dataset=dataset, limit=limit, search_type=search_type
         )
 
+        # Collect unique dataset names across all results
+        dataset_names = {
+            r["dataset_name"] for r in raw_results if r.get("dataset_name")
+        }
+
+        # Batch-fetch up to 3 completed docs per dataset from Supabase
+        sb = create_client(
+            os.getenv("SUPABASE_URL", ""),
+            os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
+        )
+        dataset_docs: dict[str, list[DocumentSource]] = {}
+        for ds in dataset_names:
+            rows = (
+                sb.table("cortex_documents")
+                .select("id,original_filename,document_type,dataset_name")
+                .eq("dataset_name", ds)
+                .eq("status", "completed")
+                .order("uploaded_at", desc=True)
+                .limit(3)
+                .execute()
+            )
+            dataset_docs[ds] = [
+                DocumentSource(**row) for row in (rows.data or [])
+            ]
+
+        # Fallback: top-3 completed docs regardless of dataset
+        fallback_rows = (
+            sb.table("cortex_documents")
+            .select("id,original_filename,document_type,dataset_name")
+            .eq("status", "completed")
+            .order("uploaded_at", desc=True)
+            .limit(3)
+            .execute()
+        )
+        fallback_docs = [DocumentSource(**row) for row in (fallback_rows.data or [])]
+
         results = [
             SearchResult(
                 text=r["text"],
                 score=r.get("score"),
-                metadata={**r.get("metadata", {}), "dataset": dataset},
+                dataset_name=r.get("dataset_name"),
+                sources=dataset_docs.get(r.get("dataset_name", ""), fallback_docs),
             )
             for r in raw_results
         ]

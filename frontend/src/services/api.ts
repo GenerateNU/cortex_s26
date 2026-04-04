@@ -38,13 +38,18 @@ export interface Document {
   file_url: string | null
 }
 
+export interface DocumentSource {
+  id: string
+  original_filename: string
+  document_type: DocumentType
+  dataset_name: string
+}
+
 export interface SearchResult {
   text: string
   score: number | null
-  metadata: {
-    dataset?: string
-    [key: string]: unknown
-  }
+  dataset_name: string | null
+  sources: DocumentSource[]
 }
 
 export interface SearchResponse {

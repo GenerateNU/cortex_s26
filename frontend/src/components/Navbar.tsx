@@ -20,20 +20,11 @@ export default function Navbar() {
       <div className="flex items-center justify-between px-6 py-4 md:px-10 max-w-7xl mx-auto">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 group flex-shrink-0">
-          <div className="relative flex items-center justify-center w-8 h-8 rounded-lg border border-violet-500/40 bg-violet-600/20 transition-all duration-300 group-hover:border-violet-500/60 group-hover:bg-violet-600/30">
-            {/* Graph-node SVG icon */}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-violet-400">
-              <circle cx="8" cy="8" r="2.5" fill="currentColor" />
-              <circle cx="3" cy="4" r="1.5" fill="currentColor" opacity="0.6" />
-              <circle cx="13" cy="4" r="1.5" fill="currentColor" opacity="0.6" />
-              <circle cx="3" cy="12" r="1.5" fill="currentColor" opacity="0.6" />
-              <circle cx="13" cy="12" r="1.5" fill="currentColor" opacity="0.6" />
-              <line x1="8" y1="5.5" x2="3" y2="4" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
-              <line x1="8" y1="5.5" x2="13" y2="4" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
-              <line x1="8" y1="10.5" x2="3" y2="12" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
-              <line x1="8" y1="10.5" x2="13" y2="12" stroke="currentColor" strokeWidth="0.8" opacity="0.5" />
-            </svg>
-          </div>
+          <img
+            src="/logo.png"
+            alt="Cortex"
+            className="w-8 h-8 object-contain transition-opacity duration-200 group-hover:opacity-80"
+          />
           <span className="text-lg font-semibold tracking-tight text-white transition-colors duration-200 group-hover:text-violet-200">
             Cortex
           </span>
