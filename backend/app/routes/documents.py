@@ -49,7 +49,7 @@ class SearchResponse(BaseModel):
 # Constants
 # ---------------------------------------------------------------------------
 
-ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx", ".md", ".html"}
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx", ".md", ".html", ".csv"}
 
 # Maps ingest error_type → (HTTP status code, user-facing prefix)
 _ERROR_TYPE_TO_HTTP: dict[str, tuple[int, str]] = {
@@ -85,8 +85,14 @@ async def upload_document(
     """
     Upload a document, ingest it into Cognee, and return structured results.
     """
+    suffix = Path(file.filename).suffix.lower() if file.filename else ""
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{suffix}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
     document_id = str(uuid.uuid4())
-    suffix = Path(file.filename).suffix if file.filename else ".bin"
     temp_path = UPLOAD_DIR / f"{document_id}{suffix}"
     storage_key = f"{dataset_name}/{document_id}{suffix}"
 
