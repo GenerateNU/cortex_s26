@@ -1,17 +1,16 @@
 """
 Tests for storage service.
 """
-import os
-from unittest.mock import ANY, AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import ANY, MagicMock, mock_open, patch
 
 import pytest
+
 from app.services.storage import (
     download_file_cloudflare,
     download_file_supabase,
     upload_file_cloudflare,
     upload_file_supabase,
 )
-
 
 # ── Cloudflare R2 Tests ────────────────────────────────────────────────────────
 

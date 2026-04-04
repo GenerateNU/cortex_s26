@@ -6,13 +6,13 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Optional
 
+from backend.app.services.ingest import ingest_document, search_knowledge_graph
 from backend.app.services.storage import (
     download_file_cloudflare,
     upload_file_cloudflare,
 )
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 #from app.services.ingest import ingest_document, search_knowledge_graph
@@ -109,7 +109,7 @@ async def upload_document(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}") from e
 
     finally:
         # Clean up temp file — never leave orphans
@@ -142,8 +142,8 @@ async def search_documents(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
-    
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}") from e
+
 @router.get("/{document_id}", response_model=bytes)
 async def get_document(document_id: str, dataset: str):
     """
