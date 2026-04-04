@@ -29,6 +29,7 @@ class UploadResponse(BaseModel):
     summary: str | None = ""
     entities: list[str] | None = []
     raw_chunks_count: int | None = 0
+    file_url: str | None = None
     error: str = ""
 
 
@@ -87,8 +88,7 @@ async def upload_document(
     document_id = str(uuid.uuid4())
     suffix = Path(file.filename).suffix if file.filename else ".bin"
     temp_path = UPLOAD_DIR / f"{document_id}{suffix}"
-
-    upload_file_cloudflare(temp_path, bucket=os.getenv("CLOUDFLARE_R2_BUCKET_NAME"), key=f"{dataset_name}/{document_id}{suffix}")
+    storage_key = f"{dataset_name}/{document_id}{suffix}"
 
     try:
         # Save uploaded file to disk
@@ -99,6 +99,21 @@ async def upload_document(
         # Ingest into Cognee
         result = await ingest_document(str(temp_path), dataset_name=dataset_name)
 
+        if result.get("status") == "error":
+            error_type = result.get("error_type", "unknown")
+            status_code, prefix = _ERROR_TYPE_TO_HTTP.get(error_type, (500, "Internal error"))
+            raise HTTPException(
+                status_code=status_code,
+                detail=f"{prefix}: {result.get('error', '')}",
+            )
+
+        # Upload original file to object storage after cognify completes
+        file_url = await upload_file_cloudflare(
+            str(temp_path),
+            bucket=os.getenv("CLOUDFLARE_R2_BUCKET_NAME"),
+            key=storage_key,
+        )
+
         return UploadResponse(
             status="ok",
             document_id=document_id,
@@ -106,7 +121,11 @@ async def upload_document(
             summary=result["summary"],
             entities=result["entities"],
             raw_chunks_count=result["raw_chunks_count"],
+            file_url=file_url,
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {e}") from e

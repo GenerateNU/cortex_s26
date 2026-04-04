@@ -242,6 +242,34 @@ async def _extract_structured_data(dataset_name: str) -> dict:
     }
 
 
+async def search_knowledge_graph(
+    query_text: str,
+    dataset: str | None = None,
+    limit: int = 20,
+) -> list[dict]:
+    """
+    Search the Cognee knowledge graph and return a list of result dicts.
+
+    Each result has ``text``, ``score``, and ``metadata`` keys so the route
+    layer can deserialise them directly into SearchResult models.
+    """
+    results = await cognee.search(
+        query_type=SearchType.CHUNKS,
+        query_text=query_text,
+    )
+
+    output: list[dict] = []
+    for item in results[:limit]:
+        text = str(item) if not hasattr(item, "text") else item.text
+        score = getattr(item, "score", None)
+        metadata: dict = {}
+        if dataset:
+            metadata["dataset"] = dataset
+        output.append({"text": text, "score": score, "metadata": metadata})
+
+    return output
+
+
 async def ingest_document_background(path: Path, dataset_name: str) -> None:
     """
     For FastAPI BackgroundTasks. Allows ingest_document to run in the
