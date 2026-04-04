@@ -1,8 +1,14 @@
+import logging
 import os
 
 from cognee import configure
 
+from app.services.ingest import check_cognee_storage
+
+logger = logging.getLogger(__name__)
+
 _cognee_initialized: bool = False
+
 
 async def setup_cognee() -> None:
     global _cognee_initialized
@@ -59,5 +65,13 @@ async def setup_cognee() -> None:
     )
 
     _cognee_initialized = True
+
+    # Verify Cognee's local storage directory is writable before any request
+    # arrives. Raises RuntimeError with a clear message if not.
+    try:
+        check_cognee_storage()
+    except RuntimeError:
+        logger.exception("Cognee storage check failed on startup")
+        raise
 
 
