@@ -2,42 +2,51 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: ${DOCKERFILE}
+      target: dev
     container_name: cortex-backend
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      ENVIRONMENT: ${ENVIRONMENT}
-      SUPABASE_URL: ${BACKEND_SUPABASE_URL}
-      SUPABASE_SERVICE_ROLE_KEY: ${BACKEND_SUPABASE_SERVICE_ROLE_KEY}
-      WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL}
-      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      DATABASE_URL: ${DB_URL}
+      # Override DB_HOST to point at the compose postgres service
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-cortex}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      # Note: DB_PASSWORD must not contain URL-special characters (@, :, /, %)
+      VECTOR_DB_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-cortex}
     volumes:
       - ./backend:/app
+      - cognee-data:/app/.cognee_system
+    depends_on:
+      postgres:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: ${DOCKERFILE}
-    container_name: cortex-frontend
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cortex-postgres
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5432:5432"
     environment:
-      VITE_ENVIRONMENT: ${ENVIRONMENT}
-      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-      VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+      POSTGRES_DB: ${DB_NAME:-cortex}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    depends_on:
-      - backend
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
+  cognee-data:
 
 networks:
   default:
     name: cortex-network
-    external: true
