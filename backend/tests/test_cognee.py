@@ -42,6 +42,8 @@ async def search_knowledge_graph():
         query_text="What is contained in the files?"
     )
 
+    return results
+
 async def main():
     files = ["mock_data/DeepFryer-1.pdf", "mock_data/DeepFryer-2.pdf"]
 

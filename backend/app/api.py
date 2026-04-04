@@ -15,8 +15,7 @@ api_router = APIRouter(prefix="/api")
 @api_router.get("/health")
 async def health_check(supabase: AsyncClient = Depends(get_async_supabase)):
     try:
-        # Check raw_files table instead of tenants
-        await supabase.table("raw_files").select("count", count="exact").execute()
+        await supabase.table("cortex_documents").select("count", count="exact").execute()
         return {"status": "healthy", "database": "connected"}
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
