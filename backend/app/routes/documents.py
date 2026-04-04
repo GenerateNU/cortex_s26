@@ -2,12 +2,17 @@
 Document routes for Cognee-powered document upload and search.
 """
 
+import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from backend.app.services.ingest import ingest_document, search_knowledge_graph
+from backend.app.services.storage import (
+    download_file_cloudflare,
+    upload_file_cloudflare,
+)
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 #from app.services.ingest import ingest_document, search_knowledge_graph
@@ -83,6 +88,8 @@ async def upload_document(
     suffix = Path(file.filename).suffix if file.filename else ".bin"
     temp_path = UPLOAD_DIR / f"{document_id}{suffix}"
 
+    upload_file_cloudflare(temp_path, bucket=os.getenv("CLOUDFLARE_R2_BUCKET_NAME"), key=f"{dataset_name}/{document_id}{suffix}")
+
     try:
         # Save uploaded file to disk
         with temp_path.open("wb") as f:
@@ -102,7 +109,7 @@ async def upload_document(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}") from e
 
     finally:
         # Clean up temp file — never leave orphans
@@ -135,4 +142,13 @@ async def search_documents(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}") from e
+
+@router.get("/{document_id}", response_model=bytes)
+async def get_document(document_id: str, dataset: str):
+    """
+    Download a document by ID.
+    """
+    key = f"{dataset}/{document_id}"
+    file_bytes = await download_file_cloudflare(bucket=os.getenv("CLOUDFLARE_R2_BUCKET_NAME"), key=key)
+    return file_bytes
