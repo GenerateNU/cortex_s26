@@ -7,6 +7,7 @@ Usage:
 """
 
 import pytest
+
 from app.services.ingest import ingest_document
 
 

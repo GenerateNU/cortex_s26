@@ -27,7 +27,7 @@ from app.services.extraction.preprocessing_queue import init_queue  # noqa: E402
 from app.services.supabase_check import wait_for_supabase  # noqa: E402
 
 from app.api import api_router  # noqa: E402
-from app.cognee_config import setup_cognee
+from app.cognee_config import setup_cognee  # noqa: E402
 
 
 @asynccontextmanager
