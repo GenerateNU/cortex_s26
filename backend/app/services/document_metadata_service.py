@@ -51,7 +51,7 @@ async def update_document_stage(supabase, doc_id: str, stage: str) -> None:
 
 
 def _normalize(row: dict) -> dict:
-    """Ensure insights/entities are always lists, not raw JSON strings."""
+    """Ensure insights/entities are always lists and file_url is present."""
     row = dict(row)
     for field in ("insights", "entities"):
         val = row.get(field)
@@ -60,4 +60,5 @@ def _normalize(row: dict) -> dict:
             row[field] = json.loads(val)
         elif val is None:
             row[field] = []
+    row.setdefault("file_url", None)
     return row

@@ -1,17 +1,18 @@
 """
 Full document processing pipeline.
 
-run_pipeline() is meant to be launched as a FastAPI BackgroundTask.
-It drives a single document through all stages: text extraction,
-LLM-based client detection and classification, Cognee ingestion,
-knowledge-graph build, and final metadata extraction.
+run_pipeline() is launched as a FastAPI BackgroundTask and drives a single
+document through: R2 upload → text extraction → LLM classification →
+Cognee ingestion → knowledge-graph build → metadata extraction → DB write.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,13 +20,19 @@ import cognee
 import litellm
 from cognee import SearchType
 
+from app.services.storage import upload_to_r2
+
 logger = logging.getLogger(__name__)
+
+_VALID_DOC_TYPES = {"RFQ", "PO", "CFG", "Client CSV", "Sales CSV"}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-_LLM_MODEL = "gemini/gemini-flash-latest"
+def _llm_model() -> str:
+    return os.getenv("LLM_MODEL", "gemini/gemini-flash-latest")
 
 
 def _llm_api_key() -> str:
@@ -33,31 +40,27 @@ def _llm_api_key() -> str:
 
 
 def _extract_text_from_pdf(file_path: Path, max_pages: int = 2) -> str:
-    """Return text from the first *max_pages* pages of a PDF file."""
+    """Return plain text from the first *max_pages* pages of a PDF."""
     try:
-        from pypdf import PdfReader  # pypdf ships with cognee
+        from pypdf import PdfReader
     except ImportError:
         logger.warning("pypdf not available; skipping PDF text extraction")
         return ""
-
     try:
         reader = PdfReader(str(file_path))
-        pages = reader.pages[:max_pages]
-        return "\n".join(page.extract_text() or "" for page in pages)
+        return "\n".join(p.extract_text() or "" for p in reader.pages[:max_pages])
     except Exception as exc:
         logger.warning("PDF text extraction failed: %s", exc)
         return ""
 
 
-def _call_llm(prompt: str, max_retries: int = 6) -> str:
-    """Synchronous wrapper around litellm.completion with exponential backoff."""
-    import time
-
-    delay = 15  # seconds between retries
+async def _call_llm(prompt: str, max_retries: int = 6) -> str:
+    """Async LLM call with exponential backoff on rate-limit errors."""
+    delay = 15
     for attempt in range(max_retries):
         try:
-            response = litellm.completion(
-                model=_LLM_MODEL,
+            response = await litellm.acompletion(
+                model=_llm_model(),
                 messages=[{"role": "user", "content": prompt}],
                 api_key=_llm_api_key(),
             )
@@ -66,23 +69,22 @@ def _call_llm(prompt: str, max_retries: int = 6) -> str:
             if attempt == max_retries - 1:
                 raise
             wait = delay * (2 ** attempt)
-            logger.warning("LLM rate limit hit, retrying in %ss (attempt %d/%d)", wait, attempt + 1, max_retries)
-            time.sleep(wait)
+            logger.warning(
+                "LLM rate limit, retrying in %ss (attempt %d/%d)",
+                wait, attempt + 1, max_retries,
+            )
+            await asyncio.sleep(wait)
     return ""
 
 
 def _extract_search_text(result) -> str:
-    """
-    Pull a plain string out of a Cognee SearchResult object, dict, or raw value.
-    Handles payload shapes: string, list-of-strings, dict.
-    """
+    """Pull a plain string out of a Cognee SearchResult, dict, or raw value."""
     if hasattr(result, "search_result"):
         payload = result.search_result
     elif isinstance(result, dict):
         payload = result.get("search_result", result)
     else:
         payload = result
-
     if isinstance(payload, list):
         return " ".join(str(p) for p in payload)
     if isinstance(payload, dict):
@@ -90,105 +92,78 @@ def _extract_search_text(result) -> str:
     return str(payload) if payload is not None else ""
 
 
-def _format_insights(raw_results: list) -> list[str]:
-    """
-    Convert TRIPLET_COMPLETION search results into a list of
-    "subject -> predicate -> object" strings.
-    """
-    formatted: list[str] = []
-    for item in raw_results:
-        # Unwrap SearchResult wrapper if present
-        if hasattr(item, "search_result"):
-            payload = item.search_result
-        elif isinstance(item, dict):
-            payload = item.get("search_result", item)
-        else:
-            payload = item
-
-        # Triplet as tuple/list
-        if isinstance(payload, (tuple, list)) and len(payload) == 3:
-            formatted.append(f"{payload[0]} -> {payload[1]} -> {payload[2]}")
-            continue
-
-        # String form "A -> rel -> B" or something else
-        text = None
-        if isinstance(payload, str):
-            text = payload
-        elif isinstance(payload, list):
-            text = " ".join(str(p) for p in payload)
-        elif isinstance(payload, dict):
-            text = payload.get("text") or str(payload)
-        else:
-            text = str(payload) if payload is not None else None
-
-        if text:
-            parts = [p.strip() for p in text.split(" -> ")]
-            if len(parts) == 3:
-                formatted.append(f"{parts[0]} -> {parts[1]} -> {parts[2]}")
-            else:
-                formatted.append(text)
-
-    return formatted
-
-
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
-
 
 async def run_pipeline(
     file_path: Path,
     doc_id: str,
     original_filename: str,
-    supabase,
+    supabase,  # unused – kept for API compatibility; we create our own sync client
 ) -> None:
     """
     Full processing pipeline for a single document.
 
-    Progress stages (written to DB):
-        uploading  → ingesting → building_graph → analyzing
+    Progress stages written to DB:
+        uploading → ingesting → building_graph → analyzing
         → extracting_insights → completed  (or failed)
     """
+    from supabase import create_client
+
+    sb = create_client(
+        os.getenv("SUPABASE_URL", ""),
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
+    )
 
     def _update(**fields) -> None:
         try:
-            from supabase import create_client
-            sb = create_client(
-                os.getenv("SUPABASE_URL", ""),
-                os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
-            )
             sb.table("cortex_documents").update(fields).eq("id", doc_id).execute()
         except Exception as exc:
             logger.warning("DB update failed for doc %s: %s", doc_id, exc)
 
+    def _now() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
     try:
         # ------------------------------------------------------------------
-        # Step 1 – Detect client / company name
+        # Step 1 – Upload raw file to Cloudflare R2
+        # ------------------------------------------------------------------
+        r2_key = f"documents/{doc_id}/{original_filename}"
+        file_url = await upload_to_r2(str(file_path), r2_key)
+        if file_url:
+            _update(file_url=file_url)
+
+        # ------------------------------------------------------------------
+        # Step 2 – Extract text, detect client name + document type (1 LLM call)
         # ------------------------------------------------------------------
         _update(progress_stage="ingesting")
 
-        suffix = file_path.suffix.lower()
         doc_text = ""
-        if suffix == ".pdf":
+        if file_path.suffix.lower() == ".pdf":
             doc_text = _extract_text_from_pdf(file_path, max_pages=2)
 
-        import re
         if doc_text:
-            combined_raw = _call_llm(
-                f"Answer two questions about this document. Reply with exactly two lines:\n"
-                f"Line 1: The company or client name (or 'Unknown' if unclear).\n"
-                f"Line 2: Document type — exactly one of: RFQ, PO, Invoice, Sales, Client Data (or 'Unknown').\n\n"
+            combined_raw = await _call_llm(
+                "Answer two questions about this document. Reply with exactly two lines:\n"
+                "Line 1: The company or client name (or 'Unknown' if unclear).\n"
+                "Line 2: Document type — exactly one of: RFQ, PO, CFG, Client CSV, Sales CSV "
+                "(or 'Unknown' if none match).\n\n"
                 f"{doc_text[:4000]}"
             )
-            lines = [l.strip().strip('"').strip("'") for l in combined_raw.splitlines() if l.strip()]
-            client_name_raw = lines[0] if len(lines) > 0 else "Unknown"
+            lines = [
+                ln.strip().strip('"').strip("'")
+                for ln in combined_raw.splitlines()
+                if ln.strip()
+            ]
+            client_name_raw = lines[0] if lines else "Unknown"
             doc_type_raw = lines[1] if len(lines) > 1 else "Unknown"
-            # Cognee dataset names cannot contain spaces or dots
+            # Cognee dataset names: alphanumeric + underscores only
             client_name = re.sub(r"[^A-Za-z0-9_]", "_", client_name_raw).strip("_") or "Unknown"
-            document_type = doc_type_raw or "Unknown"
+            document_type = doc_type_raw if doc_type_raw in _VALID_DOC_TYPES else None
         else:
             client_name = "Unknown"
-            document_type = "Unknown"
+            document_type = None
 
         _update(dataset_name=client_name)
 
@@ -223,9 +198,7 @@ async def run_pipeline(
             query_type=SearchType.CHUNKS,
             datasets=[client_name],
         )
-        insights: list[str] = [
-            _extract_search_text(r) for r in (insights_results or [])
-        ]
+        insights: list[str] = [_extract_search_text(r) for r in (insights_results or [])]
 
         # ------------------------------------------------------------------
         # Step 7 – Extract entities
@@ -235,9 +208,7 @@ async def run_pipeline(
             query_type=SearchType.CHUNKS,
             datasets=[client_name],
         )
-        entities: list[str] = [
-            _extract_search_text(r) for r in (entity_results or [])
-        ]
+        entities: list[str] = [_extract_search_text(r) for r in (entity_results or [])]
 
         # ------------------------------------------------------------------
         # Step 8 – Write final state to DB
@@ -251,21 +222,19 @@ async def run_pipeline(
             insights=json.dumps(insights),
             entities=json.dumps(entities),
             raw_chunks_count=len(summary_results) if summary_results else 0,
-            completed_at=datetime.now(timezone.utc).isoformat(),
+            completed_at=_now(),
         )
 
-    except Exception as exc:  # Step 9 – Error handling
+    except Exception as exc:
         logger.exception("Pipeline failed for doc %s: %s", doc_id, exc)
-        try:
-            _update(
-                status="failed",
-                progress_stage="failed",
-                error_message=str(exc),
-            )
-        except Exception:
-            pass
+        _update(
+            status="failed",
+            progress_stage="failed",
+            error_message=str(exc),
+            completed_at=_now(),
+        )
 
-    finally:  # Step 10 – Cleanup temp file
+    finally:
         try:
             file_path.unlink(missing_ok=True)
         except Exception:

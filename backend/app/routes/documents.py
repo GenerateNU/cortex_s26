@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from cognee import SearchType
 
 from app.services.cognee_service import search_knowledge_graph
+from app.services.storage import get_presigned_url
 from app.services.document_metadata_service import (
     create_document,
     get_all_documents,
@@ -183,6 +184,31 @@ async def list_documents():
         return await get_all_documents(None)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to fetch documents: {exc}")
+
+
+@router.get("/{doc_id}/file-url")
+async def get_file_url(doc_id: str):
+    """
+    Return a short-lived pre-signed URL for viewing/downloading the raw file
+    stored in Cloudflare R2. 404 if no file has been stored yet.
+    """
+    try:
+        doc = await get_document(None, doc_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    r2_key = doc.get("file_url")
+    if not r2_key:
+        raise HTTPException(status_code=404, detail="No raw file stored for this document.")
+
+    url = get_presigned_url(r2_key)
+    if not url:
+        raise HTTPException(status_code=503, detail="Object storage not configured.")
+
+    return {"url": url, "filename": doc["original_filename"]}
 
 
 @router.get("/{doc_id}")

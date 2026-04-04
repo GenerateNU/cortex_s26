@@ -36,9 +36,9 @@ const STAGE_PERCENT: Record<ProgressStage, number> = {
 const DOC_TYPE_COLORS: Record<string, string> = {
   RFQ: 'bg-blue-500/15 border-blue-500/25 text-blue-300',
   PO: 'bg-green-500/15 border-green-500/25 text-green-300',
-  Invoice: 'bg-amber-500/15 border-amber-500/25 text-amber-300',
-  Sales: 'bg-violet-500/15 border-violet-500/25 text-violet-300',
-  'Client Data': 'bg-rose-500/15 border-rose-500/25 text-rose-300',
+  CFG: 'bg-amber-500/15 border-amber-500/25 text-amber-300',
+  'Client CSV': 'bg-rose-500/15 border-rose-500/25 text-rose-300',
+  'Sales CSV': 'bg-violet-500/15 border-violet-500/25 text-violet-300',
 }
 
 function formatBytes(bytes: number): string {

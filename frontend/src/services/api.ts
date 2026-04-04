@@ -9,7 +9,7 @@ const client = axios.create({
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type DocumentType = 'RFQ' | 'PO' | 'Invoice' | 'Sales' | 'Client Data' | null
+export type DocumentType = 'RFQ' | 'PO' | 'CFG' | 'Client CSV' | 'Sales CSV' | null
 
 export type DocumentStatus = 'processing' | 'completed' | 'failed'
 
@@ -35,6 +35,7 @@ export interface Document {
   raw_chunks_count: number
   uploaded_at: string
   completed_at: string | null
+  file_url: string | null
 }
 
 export interface SearchResult {
@@ -107,6 +108,11 @@ export async function getDocument(id: string): Promise<Document> {
 
 export async function listDocuments(): Promise<Document[]> {
   const { data } = await client.get<Document[]>('/api/documents/')
+  return data
+}
+
+export async function getDocumentFileUrl(id: string): Promise<{ url: string; filename: string }> {
+  const { data } = await client.get<{ url: string; filename: string }>(`/api/documents/${id}/file-url`)
   return data
 }
 

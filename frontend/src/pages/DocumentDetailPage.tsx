@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
-import { getDocument, type Document, type ProgressStage } from '../services/api'
+import { getDocument, getDocumentFileUrl, type Document, type ProgressStage } from '../services/api'
 
 const DOC_TYPE_COLORS: Record<string, string> = {
   RFQ: 'bg-blue-500/15 border-blue-500/25 text-blue-300',
   PO: 'bg-green-500/15 border-green-500/25 text-green-300',
-  Invoice: 'bg-amber-500/15 border-amber-500/25 text-amber-300',
-  Sales: 'bg-violet-500/15 border-violet-500/25 text-violet-300',
-  'Client Data': 'bg-rose-500/15 border-rose-500/25 text-rose-300',
+  CFG: 'bg-amber-500/15 border-amber-500/25 text-amber-300',
+  'Client CSV': 'bg-rose-500/15 border-rose-500/25 text-rose-300',
+  'Sales CSV': 'bg-violet-500/15 border-violet-500/25 text-violet-300',
 }
 
 const STAGE_LABELS: Record<ProgressStage, string> = {
@@ -32,7 +32,7 @@ const STAGE_PERCENT: Record<ProgressStage, number> = {
   failed: 100,
 }
 
-type Tab = 'summary' | 'insights' | 'entities'
+type Tab = 'document' | 'summary' | 'insights' | 'entities'
 
 function formatDate(iso: string): string {
   try {
@@ -78,6 +78,7 @@ export default function DocumentDetailPage() {
   })
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: 'document', label: 'Document' },
     { key: 'summary', label: 'Summary' },
     { key: 'insights', label: 'Insights', count: doc?.insights?.length },
     { key: 'entities', label: 'Entities', count: doc?.entities?.length },
@@ -210,6 +211,7 @@ export default function DocumentDetailPage() {
               </div>
 
               {/* Content */}
+              {activeTab === 'document' && <DocumentTab doc={doc} />}
               {activeTab === 'summary' && <SummaryTab doc={doc} />}
               {activeTab === 'insights' && <InsightsTab insights={doc.insights ?? []} />}
               {activeTab === 'entities' && <EntitiesTab entities={doc.entities ?? []} />}
@@ -222,6 +224,103 @@ export default function DocumentDetailPage() {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function DocumentTab({ doc }: { doc: Document }) {
+  const isPdf = doc.original_filename.toLowerCase().endsWith('.pdf')
+  const isCsv = doc.original_filename.toLowerCase().endsWith('.csv')
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['document-file-url', doc.id],
+    queryFn: () => getDocumentFileUrl(doc.id),
+    enabled: !!doc.file_url,
+    staleTime: 50 * 60 * 1000, // pre-signed URLs are valid for 1h
+    retry: false,
+  })
+
+  if (!doc.file_url) {
+    return (
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+        <p className="text-[#a1a1aa] text-sm">
+          Raw file not stored — configure Cloudflare R2 credentials to enable document storage.
+        </p>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return <div className="skeleton h-[600px] rounded-2xl w-full" />
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-8 text-center">
+        <p className="text-red-300 text-sm">Failed to load document preview.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[#a1a1aa]">{doc.original_filename}</p>
+        <a
+          href={data.url}
+          download={data.filename}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6.5 1v7M6.5 8l-2.5-2.5M6.5 8l2.5-2.5" />
+            <path d="M1 10v1.5A1.5 1.5 0 002.5 13h8a1.5 1.5 0 001.5-1.5V10" />
+          </svg>
+          Download
+        </a>
+      </div>
+
+      {isPdf && (
+        <div className="rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+          <embed
+            src={data.url}
+            type="application/pdf"
+            className="w-full"
+            style={{ height: '75vh', minHeight: 500 }}
+          />
+        </div>
+      )}
+
+      {isCsv && (
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+          <p className="text-sm text-[#a1a1aa] mb-3">CSV files cannot be previewed inline.</p>
+          <a
+            href={data.url}
+            download={data.filename}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
+          >
+            Download CSV
+          </a>
+        </div>
+      )}
+
+      {!isPdf && !isCsv && (
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+          <p className="text-sm text-[#a1a1aa] mb-3">Preview not available for this file type.</p>
+          <a
+            href={data.url}
+            download={data.filename}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
+          >
+            Download File
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function StatusBadge({ doc }: { doc: Document }) {
   const isCompleted = doc.status === 'completed'

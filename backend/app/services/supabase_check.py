@@ -14,8 +14,8 @@ async def wait_for_supabase(supabase: AsyncClient):
     while retries < max_retries:
         try:
             # Simple query to check connectivity
-            await supabase.table("raw_files").select("count", count="exact").execute()
-            print("Supabase Connected!", flush=True)
+            await supabase.table("cortex_documents").select("count", count="exact").execute()
+            print("Supabase connected!", flush=True)
             return
         except Exception as e:
             retries += 1
