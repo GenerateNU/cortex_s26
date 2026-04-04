@@ -10,7 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel
 
-from app.services.cognee_service import ingest_document, search_knowledge_graph
+#from app.services.ingest import ingest_document, search_knowledge_graph
 
 # ---------------------------------------------------------------------------
 # Pydantic response models
