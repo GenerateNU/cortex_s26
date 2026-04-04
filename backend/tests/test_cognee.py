@@ -5,7 +5,7 @@ load_dotenv(override=True)
 import asyncio
 
 import cognee
-from cognee.api.v1.search import SearchType
+from cognee import SearchType
 
 
 async def setup_cognee():
@@ -41,6 +41,8 @@ async def search_knowledge_graph():
     results["graph_completion"] = await cognee.search(
         query_text="What is contained in the files?"
     )
+
+    return results
 
 async def main():
     files = ["mock_data/DeepFryer-1.pdf", "mock_data/DeepFryer-2.pdf"]

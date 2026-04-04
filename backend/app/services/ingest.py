@@ -7,11 +7,14 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from app.services.cognee_service import ingest_document as _cognee_ingest
+
 logger = logging.getLogger(__name__)
 
 
 async def ingest_document(path: Path, dataset_name: str) -> dict:
-   pass
+    return await _cognee_ingest(str(path), dataset_name=dataset_name)
+
 
 async def ingest_document_background(path: Path, dataset_name: str) -> None:
     """

@@ -1,8 +1,9 @@
 import os
 
-from cognee import configure
+import cognee
 
 _cognee_initialized: bool = False
+
 
 async def setup_cognee() -> None:
     global _cognee_initialized
@@ -32,32 +33,42 @@ async def setup_cognee() -> None:
     db_user = os.getenv("DB_USER")
     db_password = os.getenv("DB_PASSWORD")
 
-    # Configure Cognee
-    configure(
-        llm={
-            "provider": llm_provider,
-            "model": llm_model,
-            "api_key": llm_api_key,
-        },
-        embeddings={
-            "provider": embedding_provider,
-            "model": embedding_model,
-            "api_key": embedding_api_key,
-        },
-        vector_store={
-            "provider": vector_db_provider,
-            "url": vector_db_url,
-        },
-        relational_store={
-            "provider": db_provider,
-            "host": db_host,
-            "port": db_port,
-            "database": db_name,
-            "user": db_user,
-            "password": db_password,
-        },
-    )
+    if llm_provider:
+        await cognee.config.set_llm_config(
+            {
+                "provider": llm_provider,
+                "model": llm_model,
+                "api_key": llm_api_key,
+            }
+        )
+
+    if embedding_provider:
+        await cognee.config.set_embedding_config(
+            {
+                "provider": embedding_provider,
+                "model": embedding_model,
+                "api_key": embedding_api_key,
+            }
+        )
+
+    if vector_db_provider:
+        await cognee.config.set_vector_db_config(
+            {
+                "provider": vector_db_provider,
+                "url": vector_db_url,
+            }
+        )
+
+    if db_provider:
+        await cognee.config.set_relational_db_config(
+            {
+                "provider": db_provider,
+                "host": db_host,
+                "port": db_port,
+                "database": db_name,
+                "user": db_user,
+                "password": db_password,
+            }
+        )
 
     _cognee_initialized = True
-
-
