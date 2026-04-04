@@ -38,5 +38,4 @@ async def upload_file_supabase(file_path, bucket, key) -> str:
     return f"{bucket}/{key}"
 
 async def download_file_supabase(bucket, key) -> bytes:
-    response = supabase.storage.from_(bucket).download(key)
-    return response.read()
+    return supabase.storage.from_(bucket).download(key)
