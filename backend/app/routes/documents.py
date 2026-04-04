@@ -1,10 +1,11 @@
 """
 Document routes for Cognee-powered document upload and search.
-Stub endpoints with hardcoded responses for now.
 """
 
+import os
+import shutil
+import uuid
 from pathlib import Path
-from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from pydantic import BaseModel
@@ -20,15 +21,16 @@ class UploadResponse(BaseModel):
     status: str
     document_id: str
     dataset: str
-    summary: str = ""
-    entities: list[str] = []
-    raw_chunks_count: int = 0
+    summary: str | None = ""
+    entities: list[str] | None = []
+    raw_chunks_count: int | None = 0
+    file_url: str | None = None
     error: str = ""
 
 
 class SearchResult(BaseModel):
     text: str
-    score: Optional[float] = None
+    score: float | None = None
     metadata: dict = {}
 
 
@@ -37,6 +39,21 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
     total: int
 
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx", ".md", ".html", ".csv"}
+
+# Maps ingest error_type → (HTTP status code, user-facing prefix)
+_ERROR_TYPE_TO_HTTP: dict[str, tuple[int, str]] = {
+    "kuzu_storage": (503, "Storage unavailable"),
+    "llm_api": (502, "LLM API error"),
+    "vector_dimension_mismatch": (500, "Vector store configuration error"),
+    "no_data_added": (500, "Ingestion error"),
+    "unknown": (500, "Internal error"),
+}
 
 # ---------------------------------------------------------------------------
 # Router setup
@@ -55,13 +72,13 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     dataset_name: str = Query(default="main"),
+    use_background: bool = Query(default=False),
 ):
     """
-    Upload a document for Cognee processing.
-    Currently returns a hardcoded placeholder response.
-    Real logic will be wired in TICKET-10.
+    Upload a document, ingest it into Cognee, and return structured results.
     """
     try:
         validate_dataset_name(dataset_name)
@@ -81,9 +98,7 @@ async def search_documents(
     limit: int = Query(default=20, description="Max results to return"),
 ):
     """
-    Search documents via the Cognee knowledge graph.
-    Currently returns a hardcoded empty results list.
-    Real logic will be wired in TICKET-10.
+    Search the Cognee knowledge graph and return matching results.
     """
     # Convert comma-separated string to list
     dataset_list: list[str] = []

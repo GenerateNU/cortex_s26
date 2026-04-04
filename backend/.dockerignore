@@ -1,8 +1,17 @@
 __pycache__
 *.pyc
 .env
+.env.*
 .pytest_cache
 .mypy_cache
 .coverage
 venv/
 .venv/
+tests/
+.git/
+.github/
+.ruff_cache/
+*.md
+Dockerfile*
+docker-compose*.yml
+.cognee_system/

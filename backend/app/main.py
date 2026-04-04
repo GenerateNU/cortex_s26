@@ -21,12 +21,13 @@ if not os.getenv("SUPABASE_SERVICE_ROLE_KEY") and os.getenv(
     )
 
 
-from app.api import api_router  # noqa: E402
 from app.core.supabase import get_async_supabase  # noqa: E402
 from app.core.webhooks import configure_webhooks  # noqa: E402
 from app.services.extraction.preprocessing_queue import init_queue  # noqa: E402
 from app.services.supabase_check import wait_for_supabase  # noqa: E402
-from app.cognee_config import setup_cognee 
+
+from app.api import api_router  # noqa: E402
+from app.cognee_config import setup_cognee  # noqa: E402
 
 
 @asynccontextmanager
