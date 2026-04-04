@@ -1,8 +1,17 @@
 """
-Document routes for Cognee-powered document upload and search.
+Document routes for the Cortex document-intelligence pipeline.
+
+Endpoints
+---------
+POST /api/documents/upload          – upload up to 5 files, kick off pipeline
+GET  /api/documents/graph           – D3-compatible knowledge-graph data
+GET  /api/documents/search          – full-text / semantic search
+GET  /api/documents/                – list all documents
+GET  /api/documents/{doc_id}        – single document by id
 """
 
-import shutil
+from __future__ import annotations
+
 import uuid
 from pathlib import Path
 
@@ -11,22 +20,27 @@ from pydantic import BaseModel
 
 from cognee import SearchType
 
-from app.services.cognee_service import ingest_document, search_knowledge_graph
-from app.services.ingest import ingest_document_background
+from app.services.cognee_service import search_knowledge_graph
+from app.services.document_metadata_service import (
+    create_document,
+    get_all_documents,
+    get_document,
+)
+from app.services.document_pipeline import run_pipeline
+from app.services.graph_service import get_graph_data
 
 # ---------------------------------------------------------------------------
-# Pydantic response models
+# Pydantic models
 # ---------------------------------------------------------------------------
+
+
+class UploadedFile(BaseModel):
+    id: str
+    filename: str
 
 
 class UploadResponse(BaseModel):
-    status: str
-    document_id: str
-    dataset: str
-    summary: str | None = ""
-    entities: list[str] | None = []
-    raw_chunks_count: int | None = 0
-    error: str = ""
+    uploaded: list[UploadedFile]
 
 
 class SearchResult(BaseModel):
@@ -42,69 +56,87 @@ class SearchResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Router setup
+# Router
 # ---------------------------------------------------------------------------
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-# Ensure upload directory exists
 UPLOAD_DIR = Path("/tmp/cognee_uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+ALLOWED_EXTENSIONS = {".pdf", ".csv", ".txt"}
+MAX_FILES = 5
+
+
 # ---------------------------------------------------------------------------
-# Endpoints
+# Endpoints — NOTE: static paths (/graph, /search) must come before /{doc_id}
 # ---------------------------------------------------------------------------
 
 
 @router.post("/upload", response_model=UploadResponse)
-async def upload_document(
+async def upload_documents(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    dataset_name: str = Query(default="main"),
-    use_background: bool = Query(default=False),
+    files: list[UploadFile] = File(...),
 ):
     """
-    Upload a document, ingest it into Cognee, and return structured results.
+    Accept up to 5 files (.pdf, .csv, .txt), save them to disk, create DB
+    records and launch the processing pipeline for each one in the background.
+    Returns immediately with the list of doc ids / filenames.
     """
-    document_id = str(uuid.uuid4())
-    suffix = Path(file.filename).suffix if file.filename else ".bin"
-    temp_path = UPLOAD_DIR / f"{document_id}{suffix}"
-
-    try:
-        with temp_path.open("wb") as f:
-            shutil.copyfileobj(file.file, f)
-        file.file.close()
-
-        if use_background:
-            background_tasks.add_task(
-                ingest_document_background, temp_path, dataset_name
-            )
-            return UploadResponse(
-                status="processing",
-                document_id=document_id,
-                dataset=dataset_name,
-            )
-
-        result = await ingest_document(str(temp_path), dataset_name=dataset_name)
-
-        return UploadResponse(
-            status="ok",
-            document_id=document_id,
-            dataset=dataset_name,
-            summary=result["summary"],
-            entities=result["entities"],
-            raw_chunks_count=result["raw_chunks_count"],
+    if len(files) > MAX_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files. Maximum {MAX_FILES} files per request.",
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+    uploaded: list[UploadedFile] = []
 
-    finally:
-        if not use_background:
-            try:
-                temp_path.unlink(missing_ok=True)
-            except Exception:
-                pass
+    for upload_file in files:
+        filename = upload_file.filename or "upload"
+        suffix = Path(filename).suffix.lower()
+
+        if suffix not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"File '{filename}' has unsupported extension '{suffix}'. "
+                    f"Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+                ),
+            )
+
+        doc_id = await create_document(None, filename)
+        temp_path = UPLOAD_DIR / f"{uuid.uuid4()}{suffix}"
+
+        # Save file to disk
+        try:
+            contents = await upload_file.read()
+            temp_path.write_bytes(contents)
+        finally:
+            await upload_file.close()
+
+        # Fire-and-forget pipeline
+        background_tasks.add_task(
+            run_pipeline, temp_path, doc_id, filename, None
+        )
+
+        uploaded.append(UploadedFile(id=doc_id, filename=filename))
+
+    return UploadResponse(uploaded=uploaded)
+
+
+@router.get("/graph")
+async def get_graph(
+    dataset: str | None = Query(default=None, description="Filter by dataset/client name"),
+):
+    """
+    Return a D3-compatible knowledge graph for all documents or a specific
+    dataset.
+    """
+    try:
+        data = await get_graph_data(dataset=dataset)
+        return data
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Graph retrieval failed: {exc}")
 
 
 @router.get("/search", response_model=SearchResponse)
@@ -114,24 +146,54 @@ async def search_documents(
     limit: int = Query(default=20, description="Max results to return"),
     search_type: SearchType = Query(
         default=SearchType.GRAPH_COMPLETION,
-        description="Cognee search type: GRAPH_COMPLETION, CHUNKS, SUMMARIES, INSIGHTS, GRAPH_COMPLETION_COT",
+        description=(
+            "Cognee search type: GRAPH_COMPLETION, CHUNKS, SUMMARIES, "
+            "TRIPLET_COMPLETION, GRAPH_COMPLETION_COT"
+        ),
     ),
 ):
     """
     Search the Cognee knowledge graph and return matching results.
+    Each result includes dataset metadata from the source document.
     """
     try:
         raw_results = await search_knowledge_graph(
             query_text=q, dataset=dataset, limit=limit, search_type=search_type
         )
 
-        results = [SearchResult(**r) for r in raw_results]
+        results = [
+            SearchResult(
+                text=r["text"],
+                score=r.get("score"),
+                metadata={**r.get("metadata", {}), "dataset": dataset},
+            )
+            for r in raw_results
+        ]
 
-        return SearchResponse(
-            query=q,
-            results=results,
-            total=len(results),
-        )
+        return SearchResponse(query=q, results=results, total=len(results))
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Search failed: {exc}")
+
+
+@router.get("/")
+async def list_documents():
+    """Return all document records ordered by upload date (newest first)."""
+    try:
+        return await get_all_documents(None)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch documents: {exc}")
+
+
+@router.get("/{doc_id}")
+async def get_document_by_id(doc_id: str):
+    """Return a single document record. 404 if not found."""
+    try:
+        doc = await get_document(None, doc_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch document: {exc}")
+
+    if doc is None:
+        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found.")
+
+    return doc
