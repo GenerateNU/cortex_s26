@@ -42,6 +42,16 @@ async def setup_cognee() -> None:
             }
         )
 
+    # Force LanceDB to use a local file path. Without this, Cognee picks up
+    # VECTOR_DB_URL (a PostgreSQL URL) from the environment and passes it to
+    # LanceDB, which only supports file/S3/GCS paths — causing a startup crash.
+    cognee.config.set_vector_db_config(
+        {
+            "vector_db_provider": "lancedb",
+            "vector_db_url": "/app/.cognee_system/lancedb",
+        }
+    )
+
     _cognee_initialized = True
 
     # Verify Cognee's local storage directory is writable before any request
