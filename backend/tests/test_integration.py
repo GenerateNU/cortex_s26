@@ -14,7 +14,6 @@ from __future__ import annotations
 import io
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -151,6 +150,167 @@ class TestUploadDocuments:
         assert str(temp_path).endswith(".csv")
         assert len(doc_id) == 36
         assert original_filename == "data.csv"
+
+
+# ===========================================================================
+# Deduplication  POST /api/documents/upload
+# ===========================================================================
+
+
+class TestUploadDeduplication:
+
+    @patch("app.routes.documents.run_pipeline", new_callable=AsyncMock)
+    @patch("app.routes.documents.create_document", new_callable=AsyncMock)
+    @patch("app.routes.documents.find_document_by_hash", new_callable=AsyncMock)
+    def test_duplicate_returns_existing_doc(
+        self, mock_find, mock_create, mock_pipeline, client
+    ):
+        """When an identical file already exists, return it without re-processing."""
+        mock_find.return_value = {
+            "id": "existing-doc-id",
+            "original_filename": "report.pdf",
+            "status": "completed",
+            "insights": [],
+            "entities": [],
+            "file_url": None,
+        }
+
+        resp = client.post(
+            "/api/documents/upload",
+            files=[("files", ("report.pdf", io.BytesIO(b"%PDF-fake"), "application/pdf"))],
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["uploaded"]) == 1
+        assert body["uploaded"][0]["duplicate"] is True
+        assert body["uploaded"][0]["existing_doc_id"] == "existing-doc-id"
+        assert body["uploaded"][0]["id"] == "existing-doc-id"
+        # Pipeline should NOT have been triggered
+        mock_pipeline.assert_not_called()
+        # No new document should have been created
+        mock_create.assert_not_called()
+
+    @patch("app.routes.documents.run_pipeline", new_callable=AsyncMock)
+    @patch("app.services.document_metadata_service.get_async_supabase", new_callable=AsyncMock)
+    @patch("app.routes.documents.find_document_by_hash", new_callable=AsyncMock)
+    def test_new_file_proceeds_to_pipeline(
+        self, mock_find, mock_get_sb, mock_pipeline, client
+    ):
+        """When no duplicate exists, create doc and run the pipeline."""
+        mock_find.return_value = None
+        mock_get_sb.return_value = _mock_async_sb()
+
+        resp = client.post(
+            "/api/documents/upload",
+            files=[("files", ("new.pdf", io.BytesIO(b"%PDF-new"), "application/pdf"))],
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["uploaded"]) == 1
+        assert body["uploaded"][0]["duplicate"] is False
+        assert body["uploaded"][0]["existing_doc_id"] is None
+        mock_pipeline.assert_called_once()
+
+    @patch("app.routes.documents.run_pipeline", new_callable=AsyncMock)
+    @patch("app.services.document_metadata_service.get_async_supabase", new_callable=AsyncMock)
+    @patch("app.routes.documents.find_document_by_hash", new_callable=AsyncMock)
+    def test_hash_passed_to_create_document(
+        self, mock_find, mock_get_sb, mock_pipeline, client
+    ):
+        """create_document receives the content_hash for storage."""
+        import hashlib
+
+        mock_find.return_value = None
+        mock_get_sb.return_value = _mock_async_sb()
+        content = b"unique-file-content"
+        expected_hash = hashlib.sha256(content).hexdigest()
+
+        resp = client.post(
+            "/api/documents/upload",
+            files=[("files", ("file.txt", io.BytesIO(content), "text/plain"))],
+        )
+
+        assert resp.status_code == 200
+        # Verify find_document_by_hash was called with the correct hash
+        mock_find.assert_called_once_with(expected_hash)
+
+    @patch("app.routes.documents.run_pipeline", new_callable=AsyncMock)
+    @patch("app.routes.documents.create_document", new_callable=AsyncMock)
+    @patch("app.routes.documents.find_document_by_hash", new_callable=AsyncMock)
+    def test_mixed_new_and_duplicate_files(
+        self, mock_find, mock_create, mock_pipeline, client
+    ):
+        """A batch with both new and duplicate files handles each correctly."""
+        import hashlib
+
+        new_content = b"brand-new"
+        dup_content = b"already-exists"
+        dup_hash = hashlib.sha256(dup_content).hexdigest()
+
+        def _find_side_effect(content_hash):
+            if content_hash == dup_hash:
+                return {
+                    "id": "dup-doc-id",
+                    "original_filename": "old.csv",
+                    "status": "completed",
+                    "insights": [],
+                    "entities": [],
+                    "file_url": None,
+                }
+            return None
+
+        mock_find.side_effect = _find_side_effect
+        mock_create.return_value = "new-doc-id"
+
+        resp = client.post(
+            "/api/documents/upload",
+            files=[
+                ("files", ("new.txt", io.BytesIO(new_content), "text/plain")),
+                ("files", ("dup.csv", io.BytesIO(dup_content), "text/csv")),
+            ],
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["uploaded"]) == 2
+
+        new_file = body["uploaded"][0]
+        assert new_file["duplicate"] is False
+        assert new_file["filename"] == "new.txt"
+
+        dup_file = body["uploaded"][1]
+        assert dup_file["duplicate"] is True
+        assert dup_file["existing_doc_id"] == "dup-doc-id"
+
+        # Only the new file triggers the pipeline
+        mock_pipeline.assert_called_once()
+        mock_create.assert_called_once()
+
+    @patch("app.routes.documents.run_pipeline", new_callable=AsyncMock)
+    @patch("app.services.document_metadata_service.get_async_supabase", new_callable=AsyncMock)
+    @patch("app.routes.documents.find_document_by_hash", new_callable=AsyncMock)
+    def test_same_filename_different_content_not_duplicate(
+        self, mock_find, mock_get_sb, mock_pipeline, client
+    ):
+        """Same filename but different content should NOT be treated as a duplicate."""
+        mock_find.return_value = None
+        mock_get_sb.return_value = _mock_async_sb()
+
+        resp = client.post(
+            "/api/documents/upload",
+            files=[
+                ("files", ("report.pdf", io.BytesIO(b"version-1"), "application/pdf")),
+                ("files", ("report.pdf", io.BytesIO(b"version-2"), "application/pdf")),
+            ],
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["uploaded"]) == 2
+        assert all(f["duplicate"] is False for f in body["uploaded"])
+        assert mock_pipeline.call_count == 2
 
 
 # ===========================================================================

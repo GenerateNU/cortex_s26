@@ -13,25 +13,40 @@ from app.core.supabase import get_async_supabase
 logger = logging.getLogger(__name__)
 
 
-async def create_document(original_filename: str) -> str:
+async def create_document(
+    original_filename: str, content_hash: str | None = None
+) -> str:
     doc_id = str(_uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     sb = await get_async_supabase()
-    await (
+    row: dict = {
+        "id": doc_id,
+        "original_filename": original_filename,
+        "dataset_name": "processing",
+        "status": "processing",
+        "progress_stage": "uploading",
+        "uploaded_at": now,
+    }
+    if content_hash:
+        row["content_hash"] = content_hash
+    await sb.table("cortex_documents").insert(row).execute()
+    return doc_id
+
+
+async def find_document_by_hash(content_hash: str) -> dict | None:
+    """Return the first completed document with a matching content hash, or None."""
+    sb = await get_async_supabase()
+    result = await (
         sb.table("cortex_documents")
-        .insert(
-            {
-                "id": doc_id,
-                "original_filename": original_filename,
-                "dataset_name": "processing",
-                "status": "processing",
-                "progress_stage": "uploading",
-                "uploaded_at": now,
-            }
-        )
+        .select("*")
+        .eq("content_hash", content_hash)
+        .eq("status", "completed")
+        .order("uploaded_at", desc=True)
+        .limit(1)
+        .maybe_single()
         .execute()
     )
-    return doc_id
+    return _normalize(result.data) if result.data else None
 
 
 async def get_all_documents() -> list[dict]:

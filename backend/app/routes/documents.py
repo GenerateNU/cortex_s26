@@ -12,6 +12,7 @@ GET  /api/documents/{doc_id}        – single document by id
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import uuid
 from pathlib import Path
@@ -23,6 +24,7 @@ from pydantic import BaseModel
 from app.services.cognee_service import search_knowledge_graph
 from app.services.document_metadata_service import (
     create_document,
+    find_document_by_hash,
     get_all_documents,
     get_document,
 )
@@ -40,6 +42,8 @@ logger = logging.getLogger(__name__)
 class UploadedFile(BaseModel):
     id: str
     filename: str
+    duplicate: bool = False
+    existing_doc_id: str | None = None
 
 
 class UploadResponse(BaseModel):
@@ -115,15 +119,30 @@ async def upload_documents(
                 ),
             )
 
-        doc_id = await create_document(filename)
-        temp_path = UPLOAD_DIR / f"{uuid.uuid4()}{suffix}"
-
-        # Save file to disk
+        # Read file and compute content hash for deduplication
         try:
             contents = await upload_file.read()
-            temp_path.write_bytes(contents)
         finally:
             await upload_file.close()
+
+        content_hash = hashlib.sha256(contents).hexdigest()
+
+        # Check for an existing completed document with the same content
+        existing = await find_document_by_hash(content_hash)
+        if existing:
+            uploaded.append(
+                UploadedFile(
+                    id=existing["id"],
+                    filename=filename,
+                    duplicate=True,
+                    existing_doc_id=existing["id"],
+                )
+            )
+            continue
+
+        doc_id = await create_document(filename, content_hash=content_hash)
+        temp_path = UPLOAD_DIR / f"{uuid.uuid4()}{suffix}"
+        temp_path.write_bytes(contents)
 
         # Fire-and-forget pipeline
         background_tasks.add_task(run_pipeline, temp_path, doc_id, filename)
