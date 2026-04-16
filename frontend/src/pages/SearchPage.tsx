@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { searchDocuments, type SearchResult, type DocumentSource } from '../services/api'
 
@@ -358,6 +359,23 @@ function SourceCard({ source }: { source: DocumentSource }) {
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${typeColor}`}>
             {source.document_type}
           </span>
+        )}
+        {/* View in Graph */}
+        {source.dataset_name && (
+          <Link
+            to={`/graph?dataset=${encodeURIComponent(source.dataset_name)}`}
+            onClick={(e) => e.stopPropagation()}
+            className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-white/20 hover:text-violet-400 hover:border-violet-500/25 hover:bg-violet-500/10 transition-all"
+            title="View in Graph"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <circle cx="6" cy="3" r="1.5" />
+              <circle cx="2.5" cy="9" r="1.5" />
+              <circle cx="9.5" cy="9" r="1.5" />
+              <line x1="5.2" y1="4.3" x2="3.3" y2="7.7" />
+              <line x1="6.8" y1="4.3" x2="8.7" y2="7.7" />
+            </svg>
+          </Link>
         )}
         {/* Arrow */}
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
