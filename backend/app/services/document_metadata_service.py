@@ -1,64 +1,105 @@
 """
-Document metadata store — Supabase-backed.
+Document metadata store — Supabase-backed (async).
 """
+
 from __future__ import annotations
 
+import logging
 import uuid as _uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+from app.core.supabase import get_async_supabase
+
+logger = logging.getLogger(__name__)
 
 
-def _client():
-    import os
-    from supabase import create_client
-    return create_client(
-        os.getenv("SUPABASE_URL", ""),
-        os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
-    )
-
-
-async def create_document(supabase, original_filename: str) -> str:
+async def create_document(original_filename: str) -> str:
     doc_id = str(_uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
-    _client().table("cortex_documents").insert({
-        "id": doc_id,
-        "original_filename": original_filename,
-        "dataset_name": "processing",
-        "status": "processing",
-        "progress_stage": "uploading",
-        "uploaded_at": now,
-    }).execute()
+    sb = await get_async_supabase()
+    await (
+        sb.table("cortex_documents")
+        .insert(
+            {
+                "id": doc_id,
+                "original_filename": original_filename,
+                "dataset_name": "processing",
+                "status": "processing",
+                "progress_stage": "uploading",
+                "uploaded_at": now,
+            }
+        )
+        .execute()
+    )
     return doc_id
 
 
-async def get_all_documents(supabase) -> list[dict]:
-    result = _client().table("cortex_documents").select("*").order(
-        "uploaded_at", desc=True
-    ).execute()
+async def get_all_documents() -> list[dict]:
+    sb = await get_async_supabase()
+    result = (
+        await sb.table("cortex_documents")
+        .select("*")
+        .order("uploaded_at", desc=True)
+        .execute()
+    )
     return [_normalize(r) for r in (result.data or [])]
 
 
-async def get_document(supabase, doc_id: str) -> dict | None:
-    result = _client().table("cortex_documents").select("*").eq(
-        "id", doc_id
-    ).maybe_single().execute()
+async def get_document(doc_id: str) -> dict | None:
+    sb = await get_async_supabase()
+    result = (
+        await sb.table("cortex_documents")
+        .select("*")
+        .eq("id", doc_id)
+        .maybe_single()
+        .execute()
+    )
     return _normalize(result.data) if result.data else None
 
 
-async def update_document_stage(supabase, doc_id: str, stage: str) -> None:
-    _client().table("cortex_documents").update(
-        {"progress_stage": stage}
-    ).eq("id", doc_id).execute()
+async def update_document_stage(doc_id: str, stage: str) -> None:
+    sb = await get_async_supabase()
+    await (
+        sb.table("cortex_documents")
+        .update({"progress_stage": stage})
+        .eq("id", doc_id)
+        .execute()
+    )
 
 
 def _normalize(row: dict) -> dict:
     """Ensure insights/entities are always lists and file_url is present."""
+    import json
+
     row = dict(row)
     for field in ("insights", "entities"):
         val = row.get(field)
         if isinstance(val, str):
-            import json
             row[field] = json.loads(val)
         elif val is None:
             row[field] = []
     row.setdefault("file_url", None)
     return row
+
+
+async def recover_stale_documents(stale_minutes: int = 30) -> int:
+    """Mark documents stuck in 'processing' for >stale_minutes as 'failed'."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=stale_minutes)).isoformat()
+    sb = await get_async_supabase()
+    result = await (
+        sb.table("cortex_documents")
+        .update(
+            {
+                "status": "failed",
+                "progress_stage": "failed",
+                "error_message": "Recovered: pipeline did not complete (server restart)",
+            }
+        )
+        .eq("status", "processing")
+        .lt("uploaded_at", cutoff)
+        .execute()
+    )
+    count = len(result.data or [])
+    if count:
+        logger.info("Recovered %d stale documents", count)
+    return count

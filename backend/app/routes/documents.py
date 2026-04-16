@@ -12,16 +12,15 @@ GET  /api/documents/{doc_id}        – single document by id
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 
+from cognee import SearchType
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
-from cognee import SearchType
-
 from app.services.cognee_service import search_knowledge_graph
-from app.services.storage import get_presigned_url
 from app.services.document_metadata_service import (
     create_document,
     get_all_documents,
@@ -29,6 +28,9 @@ from app.services.document_metadata_service import (
 )
 from app.services.document_pipeline import run_pipeline
 from app.services.graph_service import get_graph_data
+from app.services.storage import get_presigned_url
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Pydantic models
@@ -113,7 +115,7 @@ async def upload_documents(
                 ),
             )
 
-        doc_id = await create_document(None, filename)
+        doc_id = await create_document(filename)
         temp_path = UPLOAD_DIR / f"{uuid.uuid4()}{suffix}"
 
         # Save file to disk
@@ -124,9 +126,7 @@ async def upload_documents(
             await upload_file.close()
 
         # Fire-and-forget pipeline
-        background_tasks.add_task(
-            run_pipeline, temp_path, doc_id, filename, None
-        )
+        background_tasks.add_task(run_pipeline, temp_path, doc_id, filename)
 
         uploaded.append(UploadedFile(id=doc_id, filename=filename))
 
@@ -135,7 +135,9 @@ async def upload_documents(
 
 @router.get("/graph")
 async def get_graph(
-    dataset: str | None = Query(default=None, description="Filter by dataset/client name"),
+    dataset: str | None = Query(
+        default=None, description="Filter by dataset/client name"
+    ),
 ):
     """
     Return a D3-compatible knowledge graph for all documents or a specific
@@ -144,8 +146,9 @@ async def get_graph(
     try:
         data = await get_graph_data(dataset=dataset)
         return data
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Graph retrieval failed: {exc}")
+    except Exception:
+        logger.exception("Graph retrieval failed")
+        raise HTTPException(status_code=500, detail="Graph retrieval failed") from None
 
 
 @router.get("/search", response_model=SearchResponse)
@@ -165,8 +168,7 @@ async def search_documents(
     Search the Cognee knowledge graph. Each result includes up to 3 source
     documents from the matching dataset so the frontend can show provenance.
     """
-    import os
-    from supabase import create_client
+    from app.core.supabase import get_async_supabase
 
     try:
         raw_results = await search_knowledge_graph(
@@ -179,13 +181,10 @@ async def search_documents(
         }
 
         # Batch-fetch up to 3 completed docs per dataset from Supabase
-        sb = create_client(
-            os.getenv("SUPABASE_URL", ""),
-            os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
-        )
+        sb = await get_async_supabase()
         dataset_docs: dict[str, list[DocumentSource]] = {}
         for ds in dataset_names:
-            rows = (
+            rows = await (
                 sb.table("cortex_documents")
                 .select("id,original_filename,document_type,dataset_name")
                 .eq("dataset_name", ds)
@@ -194,12 +193,10 @@ async def search_documents(
                 .limit(3)
                 .execute()
             )
-            dataset_docs[ds] = [
-                DocumentSource(**row) for row in (rows.data or [])
-            ]
+            dataset_docs[ds] = [DocumentSource(**row) for row in (rows.data or [])]
 
         # Fallback: top-3 completed docs regardless of dataset
-        fallback_rows = (
+        fallback_rows = await (
             sb.table("cortex_documents")
             .select("id,original_filename,document_type,dataset_name")
             .eq("status", "completed")
@@ -221,17 +218,21 @@ async def search_documents(
 
         return SearchResponse(query=q, results=results, total=len(results))
 
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Search failed: {exc}")
+    except Exception:
+        logger.exception("Search failed")
+        raise HTTPException(status_code=500, detail="Search failed") from None
 
 
 @router.get("/")
 async def list_documents():
     """Return all document records ordered by upload date (newest first)."""
     try:
-        return await get_all_documents(None)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch documents: {exc}")
+        return await get_all_documents()
+    except Exception:
+        logger.exception("Failed to fetch documents")
+        raise HTTPException(
+            status_code=500, detail="Failed to fetch documents"
+        ) from None
 
 
 @router.get("/{doc_id}/file-url")
@@ -241,16 +242,21 @@ async def get_file_url(doc_id: str):
     stored in Cloudflare R2. 404 if no file has been stored yet.
     """
     try:
-        doc = await get_document(None, doc_id)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        doc = await get_document(doc_id)
+    except Exception:
+        logger.exception("Failed to retrieve document for file-url")
+        raise HTTPException(
+            status_code=500, detail="Failed to retrieve document"
+        ) from None
 
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found.")
 
     r2_key = doc.get("file_url")
     if not r2_key:
-        raise HTTPException(status_code=404, detail="No raw file stored for this document.")
+        raise HTTPException(
+            status_code=404, detail="No raw file stored for this document."
+        )
 
     url = get_presigned_url(r2_key)
     if not url:
@@ -263,9 +269,12 @@ async def get_file_url(doc_id: str):
 async def get_document_by_id(doc_id: str):
     """Return a single document record. 404 if not found."""
     try:
-        doc = await get_document(None, doc_id)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch document: {exc}")
+        doc = await get_document(doc_id)
+    except Exception:
+        logger.exception("Failed to fetch document")
+        raise HTTPException(
+            status_code=500, detail="Failed to fetch document"
+        ) from None
 
     if doc is None:
         raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found.")

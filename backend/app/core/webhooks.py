@@ -1,6 +1,9 @@
+import logging
 import os
 
 from supabase._async.client import AsyncClient
+
+logger = logging.getLogger(__name__)
 
 
 async def configure_webhooks(supabase: AsyncClient):
@@ -9,8 +12,8 @@ async def configure_webhooks(supabase: AsyncClient):
     webhook_secret = os.getenv("WEBHOOK_SECRET")
 
     if not webhook_base_url or not webhook_secret:
-        print("⚠️  WARNING: Webhook configuration missing. File extraction disabled.")
-        print("    Set WEBHOOK_BASE_URL and WEBHOOK_SECRET in .env")
+        logger.warning("Webhook configuration missing. File extraction disabled.")
+        logger.warning("Set WEBHOOK_BASE_URL and WEBHOOK_SECRET in .env")
         return
 
     try:
@@ -20,6 +23,6 @@ async def configure_webhooks(supabase: AsyncClient):
             "update_webhook_config", {"url": webhook_url, "secret": webhook_secret}
         ).execute()
 
-        print(f"✓ Webhook configured: {webhook_url}")
+        logger.info("Webhook configured: %s", webhook_url)
     except Exception as e:
-        print(f"✗ Failed to configure webhook: {e}")
+        logger.error("Failed to configure webhook: %s", e)

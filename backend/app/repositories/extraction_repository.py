@@ -1,7 +1,11 @@
+import logging
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
 from supabase._async.client import AsyncClient
+
+logger = logging.getLogger(__name__)
 
 
 class ExtractionRepository:
@@ -74,7 +78,7 @@ class ExtractionRepository:
                     "summary": summary,
                     "extracted_json": extracted_json,
                     "embedding": embedding,
-                    "processed_at": "now()",
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
                 }
             )
             .eq("file_id", str(file_id))
@@ -108,7 +112,7 @@ class ExtractionRepository:
                     "extracted_json": extracted_json,
                     "embedding": embedding,
                     "row_index": row_index,
-                    "processed_at": "now()",
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
                 }
             )
             .execute()
@@ -149,7 +153,7 @@ class ExtractionRepository:
 
             return await self.supabase.storage.from_("documents").download(path)
         except Exception as e:
-            print(f"Download Error: {e}")
+            logger.error("Download Error: %s", e)
             raise
 
     async def delete_by_file_id(self, file_id: UUID) -> None:

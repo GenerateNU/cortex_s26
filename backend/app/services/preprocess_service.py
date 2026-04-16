@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import Depends
@@ -15,6 +16,8 @@ from app.services.extraction.pdf_strategy import (
     get_pdf_extraction_strategy,
 )
 from app.services.pattern_recognition_service import PatternRecognitionService
+
+logger = logging.getLogger(__name__)
 
 
 class PreprocessService:
@@ -60,11 +63,11 @@ class PreprocessService:
 
             # 1. Download File
             file_bytes = await self.extraction_repo.download_file(file_link)
-            print(f"File downloaded: {file_name}", flush=True)
+            logger.info("File downloaded: %s", file_name)
 
             # 2. Determine Strategy and Extract
             if file_name.lower().endswith(".csv"):
-                print("Processing as CSV", flush=True)
+                logger.info("Processing as CSV")
                 # Returns list of dicts
                 extraction_results = await self.csv_strategy.extract_data(
                     file_bytes, file_name
@@ -80,7 +83,7 @@ class PreprocessService:
                 await self.extraction_repo.delete_by_file_id(file_id)
 
             else:
-                print("Processing as PDF", flush=True)
+                logger.info("Processing as PDF")
                 # Returns single dict result wrapped in list for uniform processing
                 single_result = await self.pdf_strategy.extract_data(
                     file_bytes, file_name
@@ -102,7 +105,7 @@ class PreprocessService:
                 use_existing = item.get("use_existing_id", False)
                 row_index = item.get("row_index", None)
 
-                print(f"Processing item: {row_name}", flush=True)
+                logger.info("Processing item: %s", row_name)
 
                 # Generate Embedding
                 embedding = await generate_embedding(extracted_data)
@@ -136,16 +139,18 @@ class PreprocessService:
                             file_id, summary
                         )
                     except Exception as rel_err:
-                        print(
-                            f"Non-fatal relationship detection error for {row_name}: {rel_err}"
+                        logger.warning(
+                            "Non-fatal relationship detection error for %s: %s",
+                            row_name,
+                            rel_err,
                         )
 
-            print("All items processed", flush=True)
+            logger.info("All items processed")
             return str(file_id)
 
         except Exception as e:
             # Update status to "failed"
-            print(f"Processing failed for {file_id}: {e}", flush=True)
+            logger.error("Processing failed for %s: %s", file_id, e)
             await self.extraction_repo.update_status(file_id, "Failed", str(e))
             raise
 

@@ -98,7 +98,11 @@ def _is_llm_error(exc: Exception) -> bool:
 
 def _is_dimension_mismatch(exc: Exception) -> bool:
     lowered = str(exc).lower()
-    return "dimension" in lowered or "mismatch" in lowered or "wrong number of dimensions" in lowered
+    return (
+        "dimension" in lowered
+        or "mismatch" in lowered
+        or "wrong number of dimensions" in lowered
+    )
 
 
 async def ingest_document(
@@ -166,9 +170,16 @@ async def ingest_document(
                 "To fix: delete the '.cognee_system/' directory and re-ingest all documents."
             )
             logger.error("Vector dimension mismatch: %s", exc, exc_info=True)
-            return {"status": "error", "error_type": "vector_dimension_mismatch", "error": msg}
+            return {
+                "status": "error",
+                "error_type": "vector_dimension_mismatch",
+                "error": msg,
+            }
         lowered = str(exc).lower()
-        if any(phrase in lowered for phrase in ("no data", "no documents", "dataset is empty")):
+        if any(
+            phrase in lowered
+            for phrase in ("no data", "no documents", "dataset is empty")
+        ):
             logger.warning(
                 "cognify() called on dataset '%s' with no prior add(): %s",
                 dataset_name,
@@ -195,8 +206,14 @@ async def ingest_document(
                 "This happens when the embedding model is changed after data was already stored. "
                 "To fix: delete the '.cognee_system/' directory and re-ingest all documents."
             )
-            logger.error("Vector dimension mismatch during search: %s", exc, exc_info=True)
-            return {"status": "error", "error_type": "vector_dimension_mismatch", "error": msg}
+            logger.error(
+                "Vector dimension mismatch during search: %s", exc, exc_info=True
+            )
+            return {
+                "status": "error",
+                "error_type": "vector_dimension_mismatch",
+                "error": msg,
+            }
         logger.error("Unexpected error during search: %s", exc, exc_info=True)
         return {"status": "error", "error_type": "unknown", "error": str(exc)}
 
@@ -240,34 +257,6 @@ async def _extract_structured_data(dataset_name: str) -> dict:
         "entities": entities,
         "raw_chunks_count": len(chunk_results),
     }
-
-
-async def search_knowledge_graph(
-    query_text: str,
-    dataset: str | None = None,
-    limit: int = 20,
-) -> list[dict]:
-    """
-    Search the Cognee knowledge graph and return a list of result dicts.
-
-    Each result has ``text``, ``score``, and ``metadata`` keys so the route
-    layer can deserialise them directly into SearchResult models.
-    """
-    results = await cognee.search(
-        query_type=SearchType.CHUNKS,
-        query_text=query_text,
-    )
-
-    output: list[dict] = []
-    for item in results[:limit]:
-        text = str(item) if not hasattr(item, "text") else item.text
-        score = getattr(item, "score", None)
-        metadata: dict = {}
-        if dataset:
-            metadata["dataset"] = dataset
-        output.append({"text": text, "score": score, "metadata": metadata})
-
-    return output
 
 
 async def ingest_document_background(path: Path, dataset_name: str) -> None:

@@ -1,7 +1,11 @@
+import logging
+
 from fastapi import Depends, HTTPException, Request
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
+
+logger = logging.getLogger(__name__)
 
 
 async def get_current_user(
@@ -38,9 +42,8 @@ async def get_current_user(
             },
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=401, detail=f"Authentication failed: {str(e)}"
-        ) from e
+        logger.exception("Authentication failed")
+        raise HTTPException(status_code=401, detail="Authentication failed") from e
 
 
 async def get_current_admin(

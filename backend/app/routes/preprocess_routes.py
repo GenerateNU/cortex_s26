@@ -1,8 +1,11 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.services.extraction.preprocessing_queue import PreprocessingQueue, get_queue
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/preprocess", tags=["preprocess"])
 
@@ -19,4 +22,5 @@ async def preprocess_file(
         task_id = await queue.enqueue(file_id)
         return {"message": "File queued for preprocessing", "task_id": task_id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Preprocessing failed")
+        raise HTTPException(status_code=500, detail="Preprocessing failed") from e

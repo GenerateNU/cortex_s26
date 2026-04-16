@@ -1,10 +1,13 @@
 import json
+import logging
 from typing import Any
 from uuid import UUID
 
 from supabase._async.client import AsyncClient
 
 from app.core.litellm import LLMClient
+
+logger = logging.getLogger(__name__)
 
 
 class ClassificationService:
@@ -127,7 +130,7 @@ class ClassificationService:
                     )
                     classified_count += 1
             except Exception as e:
-                print(f"Failed to classify file {file_record['id']}: {e}")
+                logger.error("Failed to classify file %s: %s", file_record["id"], e)
                 failed_count += 1
 
         return {"classified": classified_count, "failed": failed_count}

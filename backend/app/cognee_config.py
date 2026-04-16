@@ -16,6 +16,18 @@ async def setup_cognee() -> None:
     if _cognee_initialized:
         return
 
+    # Fail fast if critical env vars are missing
+    required_vars = {
+        "LLM_API_KEY": os.getenv("LLM_API_KEY"),
+        "SUPABASE_URL": os.getenv("SUPABASE_URL"),
+        "SUPABASE_SERVICE_ROLE_KEY": os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
+    }
+    missing = [k for k, v in required_vars.items() if not v]
+    if missing:
+        raise RuntimeError(
+            f"Missing required environment variables: {', '.join(missing)}"
+        )
+
     llm_provider = os.getenv("LLM_PROVIDER")
     llm_model = os.getenv("LLM_MODEL")
     llm_api_key = os.getenv("LLM_API_KEY")
@@ -42,13 +54,27 @@ async def setup_cognee() -> None:
             }
         )
 
-    # Force LanceDB to use a local file path. Without this, Cognee picks up
-    # VECTOR_DB_URL (a PostgreSQL URL) from the environment and passes it to
-    # LanceDB, which only supports file/S3/GCS paths — causing a startup crash.
+    cognee.config.set_graph_db_config(
+        {
+            "graph_database_provider": "kuzu",
+        }
+    )
+
     cognee.config.set_vector_db_config(
         {
-            "vector_db_provider": "lancedb",
-            "vector_db_url": "/app/.cognee_system/lancedb",
+            "vector_db_provider": "pgvector",
+            "vector_db_url": os.getenv("VECTOR_DB_URL", ""),
+        }
+    )
+    cognee.config.set_relational_db_config(
+        {
+            "db_path": "",
+            "db_provider": "postgres",
+            "db_host": os.getenv("DB_HOST"),
+            "db_port": os.getenv("DB_PORT", "5432"),
+            "db_name": os.getenv("DB_NAME"),
+            "db_username": os.getenv("DB_USER"),
+            "db_password": os.getenv("DB_PASSWORD"),
         }
     )
 

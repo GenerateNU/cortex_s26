@@ -12,7 +12,6 @@ import asyncio
 import json
 import logging
 import os
-import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,16 +19,20 @@ import cognee
 import litellm
 from cognee import SearchType
 
+from app.core.supabase import get_async_supabase
 from app.services.storage import upload_to_r2
+from app.utils.validation import sanitize_dataset_name
 
 logger = logging.getLogger(__name__)
 
 _VALID_DOC_TYPES = {"RFQ", "PO", "CFG", "Client CSV", "Sales CSV"}
+_COGNEE_TIMEOUT = int(os.getenv("COGNEE_TIMEOUT_SECONDS", "300"))
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _llm_model() -> str:
     return os.getenv("LLM_MODEL", "gemini/gemini-flash-latest")
@@ -68,13 +71,15 @@ async def _call_llm(prompt: str, max_retries: int = 6) -> str:
         except litellm.RateLimitError:
             if attempt == max_retries - 1:
                 raise
-            wait = delay * (2 ** attempt)
+            wait = delay * (2**attempt)
             logger.warning(
                 "LLM rate limit, retrying in %ss (attempt %d/%d)",
-                wait, attempt + 1, max_retries,
+                wait,
+                attempt + 1,
+                max_retries,
             )
             await asyncio.sleep(wait)
-    return ""
+    return ""  # pragma: no cover – loop always returns or raises
 
 
 def _extract_search_text(result) -> str:
@@ -96,11 +101,11 @@ def _extract_search_text(result) -> str:
 # Pipeline
 # ---------------------------------------------------------------------------
 
+
 async def run_pipeline(
     file_path: Path,
     doc_id: str,
     original_filename: str,
-    supabase,  # unused – kept for API compatibility; we create our own sync client
 ) -> None:
     """
     Full processing pipeline for a single document.
@@ -109,16 +114,11 @@ async def run_pipeline(
         uploading → ingesting → building_graph → analyzing
         → extracting_insights → completed  (or failed)
     """
-    from supabase import create_client
+    sb = await get_async_supabase()
 
-    sb = create_client(
-        os.getenv("SUPABASE_URL", ""),
-        os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
-    )
-
-    def _update(**fields) -> None:
+    async def _update(**fields) -> None:
         try:
-            sb.table("cortex_documents").update(fields).eq("id", doc_id).execute()
+            await sb.table("cortex_documents").update(fields).eq("id", doc_id).execute()
         except Exception as exc:
             logger.warning("DB update failed for doc %s: %s", doc_id, exc)
 
@@ -132,12 +132,12 @@ async def run_pipeline(
         r2_key = f"documents/{doc_id}/{original_filename}"
         file_url = await upload_to_r2(str(file_path), r2_key)
         if file_url:
-            _update(file_url=file_url)
+            await _update(file_url=file_url)
 
         # ------------------------------------------------------------------
         # Step 2 – Extract text, detect client name + document type (1 LLM call)
         # ------------------------------------------------------------------
-        _update(progress_stage="ingesting")
+        await _update(progress_stage="ingesting")
 
         doc_text = ""
         if file_path.suffix.lower() == ".pdf":
@@ -158,62 +158,78 @@ async def run_pipeline(
             ]
             client_name_raw = lines[0] if lines else "Unknown"
             doc_type_raw = lines[1] if len(lines) > 1 else "Unknown"
-            # Cognee dataset names: alphanumeric + underscores only
-            client_name = re.sub(r"[^A-Za-z0-9_]", "_", client_name_raw).strip("_") or "Unknown"
+            client_name = sanitize_dataset_name(client_name_raw)
             document_type = doc_type_raw if doc_type_raw in _VALID_DOC_TYPES else None
         else:
             client_name = "Unknown"
             document_type = None
 
-        _update(dataset_name=client_name)
+        await _update(dataset_name=client_name)
 
         # ------------------------------------------------------------------
         # Step 3 – Add to Cognee
         # ------------------------------------------------------------------
-        await cognee.add(str(file_path), dataset_name=client_name)
-        _update(progress_stage="building_graph")
+        await asyncio.wait_for(
+            cognee.add(str(file_path), dataset_name=client_name),
+            timeout=_COGNEE_TIMEOUT,
+        )
+        await _update(progress_stage="building_graph")
 
         # ------------------------------------------------------------------
         # Step 4 – Cognify (build knowledge graph)
         # ------------------------------------------------------------------
-        await cognee.cognify(datasets=[client_name])
-        _update(progress_stage="analyzing")
+        await asyncio.wait_for(
+            cognee.cognify(datasets=[client_name]),
+            timeout=_COGNEE_TIMEOUT,
+        )
+        await _update(progress_stage="analyzing")
 
         # ------------------------------------------------------------------
         # Step 5 – Extract summary
         # ------------------------------------------------------------------
-        summary_results = await cognee.search(
-            query_text="Summarize this document",
-            query_type=SearchType.CHUNKS,
-            datasets=[client_name],
+        summary_results = await asyncio.wait_for(
+            cognee.search(
+                query_text="Summarize this document",
+                query_type=SearchType.CHUNKS,
+                datasets=[client_name],
+            ),
+            timeout=_COGNEE_TIMEOUT,
         )
         summary = _extract_search_text(summary_results[0]) if summary_results else ""
 
         # ------------------------------------------------------------------
         # Step 6 – Extract insights
         # ------------------------------------------------------------------
-        _update(progress_stage="extracting_insights")
-        insights_results = await cognee.search(
-            query_text="What are all the entities and relationships?",
-            query_type=SearchType.CHUNKS,
-            datasets=[client_name],
+        await _update(progress_stage="extracting_insights")
+        insights_results = await asyncio.wait_for(
+            cognee.search(
+                query_text="What are all the entities and relationships?",
+                query_type=SearchType.CHUNKS,
+                datasets=[client_name],
+            ),
+            timeout=_COGNEE_TIMEOUT,
         )
-        insights: list[str] = [_extract_search_text(r) for r in (insights_results or [])]
+        insights: list[str] = [
+            _extract_search_text(r) for r in (insights_results or [])
+        ]
 
         # ------------------------------------------------------------------
         # Step 7 – Extract entities
         # ------------------------------------------------------------------
-        entity_results = await cognee.search(
-            query_text="List all entities",
-            query_type=SearchType.CHUNKS,
-            datasets=[client_name],
+        entity_results = await asyncio.wait_for(
+            cognee.search(
+                query_text="List all entities",
+                query_type=SearchType.CHUNKS,
+                datasets=[client_name],
+            ),
+            timeout=_COGNEE_TIMEOUT,
         )
         entities: list[str] = [_extract_search_text(r) for r in (entity_results or [])]
 
         # ------------------------------------------------------------------
         # Step 8 – Write final state to DB
         # ------------------------------------------------------------------
-        _update(
+        await _update(
             status="completed",
             progress_stage="completed",
             dataset_name=client_name,
@@ -227,7 +243,7 @@ async def run_pipeline(
 
     except Exception as exc:
         logger.exception("Pipeline failed for doc %s: %s", doc_id, exc)
-        _update(
+        await _update(
             status="failed",
             progress_stage="failed",
             error_message=str(exc),

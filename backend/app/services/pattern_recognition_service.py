@@ -1,10 +1,13 @@
 import json
+import logging
 from typing import Any
 from uuid import UUID
 
 from supabase._async.client import AsyncClient
 
 from app.core.litellm import LLMClient
+
+logger = logging.getLogger(__name__)
 
 
 class PatternRecognitionService:
@@ -106,7 +109,7 @@ class PatternRecognitionService:
             content = json.loads(content_str)
             matches = content.get("matches", [])
         except Exception as e:
-            print(f"Relationship detection failed: {e}")
+            logger.error("Relationship detection failed: %s", e)
             return
 
         # 3. Process matches
@@ -156,7 +159,7 @@ class PatternRecognitionService:
                     if new_rel.data:
                         rel_id = new_rel.data[0]["relationship_id"]
                 except Exception as e:
-                    print(f"Could not create relationship {rel_name}: {e}")
+                    logger.error("Could not create relationship %s: %s", rel_name, e)
                     # Try to fetch again in case of race
                     continue
 
@@ -175,9 +178,9 @@ class PatternRecognitionService:
                         )
                         .execute()
                     )
-                    print(f"Linked file {file_id} to relationship {rel_name}")
+                    logger.info("Linked file %s to relationship %s", file_id, rel_name)
                 except Exception as e:
-                    print(f"Link failed: {e}")
+                    logger.error("Link failed: %s", e)
 
     async def get_graph_data(self) -> dict[str, list[Any]]:
         """

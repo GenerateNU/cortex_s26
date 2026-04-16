@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from supabase._async.client import AsyncClient
 
@@ -9,6 +11,8 @@ from app.schemas.search_schemas import (
     SearchResult,
 )
 from app.services.search_service import SearchService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/search", tags=["Search"])
 
@@ -44,7 +48,8 @@ async def search_documents(
 
         return SearchResponse(results=mapped_results)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("Search failed")
+        raise HTTPException(status_code=500, detail="Search failed") from e
 
 
 @router.post("/rag", response_model=RAGSearchResponse)
@@ -73,4 +78,5 @@ async def rag_search_documents(
 
         return RAGSearchResponse(answer=result["answer"], sources=mapped_sources)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        logger.exception("RAG search failed")
+        raise HTTPException(status_code=500, detail="RAG search failed") from e

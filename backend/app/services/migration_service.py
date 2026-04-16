@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Any
 from uuid import UUID
@@ -5,6 +6,8 @@ from uuid import UUID
 from supabase._async.client import AsyncClient
 
 from app.services.schema.schema_generation_service import SchemaGenerationService
+
+logger = logging.getLogger(__name__)
 
 
 class MigrationService:
@@ -98,7 +101,7 @@ class MigrationService:
                 # await self.supabase.rpc("exec_sql", {"sql_query": sql}).execute()
                 # For safety/stability in this environment where I can't easily add RPCs:
                 # We will log it and mark as executed.
-                print(f"EXECUTING SQL (Simulated): {sql}")
+                logger.info("EXECUTING SQL (Simulated): %s", sql)
 
                 # Update status
                 from datetime import datetime
@@ -111,7 +114,7 @@ class MigrationService:
                 )
 
             except Exception as e:
-                print(f"Migration failed: {e}")
+                logger.error("Migration failed: %s", e)
                 # Don't stop, or stop? Stop on error.
                 raise e
 

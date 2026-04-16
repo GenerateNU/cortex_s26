@@ -1,10 +1,13 @@
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from supabase._async.client import AsyncClient
 
 from app.core.supabase import get_async_supabase
 from app.services.pattern_recognition_service import PatternRecognitionService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/pattern-recognition", tags=["Pattern Recognition"])
 
@@ -23,7 +26,13 @@ async def analyze_relationships(
     Analyzes relationships for the given tenant.
     Note: tenant_id is kept for URL compatibility but ignored by service.
     """
-    return await service.analyze_relationships(tenant_id)
+    try:
+        return await service.analyze_relationships(tenant_id)
+    except Exception:
+        logger.exception("Failed to analyze relationships")
+        raise HTTPException(
+            status_code=500, detail="Failed to analyze relationships"
+        ) from None
 
 
 @router.get("/graph")
@@ -31,4 +40,10 @@ async def get_graph_data(service: PatternRecognitionService = Depends(get_servic
     """
     Returns nodes and edges for the relationship graph.
     """
-    return await service.get_graph_data()
+    try:
+        return await service.get_graph_data()
+    except Exception:
+        logger.exception("Failed to get graph data")
+        raise HTTPException(
+            status_code=500, detail="Failed to get graph data"
+        ) from None

@@ -2,8 +2,12 @@
 Cognee service layer — wraps cognee SDK calls for use by route handlers.
 """
 
+import logging
+
 import cognee
 from cognee import SearchType
+
+logger = logging.getLogger(__name__)
 
 
 async def search_knowledge_graph(
@@ -24,7 +28,11 @@ async def search_knowledge_graph(
     if dataset:
         search_kwargs["datasets"] = [dataset]
 
-    raw_results = await cognee.search(**search_kwargs)
+    try:
+        raw_results = await cognee.search(**search_kwargs)
+    except Exception:
+        logger.exception("Cognee search failed for query=%s", query_text)
+        raise
 
     results = []
     for r in raw_results or []:
@@ -46,10 +54,12 @@ async def search_knowledge_graph(
         else:
             text = str(payload)
 
-        results.append({
-            "text": text,
-            "score": None,
-            "dataset_name": result_dataset,
-        })
+        results.append(
+            {
+                "text": text,
+                "score": None,
+                "dataset_name": result_dataset,
+            }
+        )
 
     return results[:limit]
