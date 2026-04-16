@@ -15,7 +15,8 @@ select = [
 ignore = [
     "E501",
     "B008",
-    "UP007"
+    "UP007",
+    "UP017",
 ]
 
 [tool.ruff.format]
@@ -26,3 +27,7 @@ line-ending = "auto"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+asyncio_mode = "auto"
+markers = [
+    "e2e: end-to-end tests requiring real LLM credentials",
+]
