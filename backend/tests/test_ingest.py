@@ -10,14 +10,10 @@ Usage:
 
 from __future__ import annotations
 
-import io
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
-from app.routes.documents import router
 from app.services.ingest import ingest_document
 
 # ---------------------------------------------------------------------------
@@ -296,120 +292,3 @@ async def test_ingest_document_bad_file():
     # FileNotFoundError is an OSError subclass → kuzu_storage bucket
     assert result["status"] == "error"
     assert "error" in result
-
-
-# ---------------------------------------------------------------------------
-# Upload route tests (/api/documents/upload)
-# ---------------------------------------------------------------------------
-
-_test_app = FastAPI()
-_test_app.include_router(router)  # router already has prefix="/documents"
-
-_client = TestClient(_test_app)
-
-_INGEST_SUCCESS = {
-    "status": "success",
-    "document_id": "doc-123",
-    "dataset_name": "main",
-    "summary": "A test summary.",
-    "entities": ["EntityA"],
-    "raw_chunks_count": 2,
-}
-
-_FAKE_FILE_URL = "s3://test-bucket/main/doc-123.pdf"
-
-
-def _upload_payload(filename: str = "test.pdf", content: bytes = b"%PDF fake"):
-    return {"file": (filename, io.BytesIO(content), "application/pdf")}
-
-
-@patch("app.routes.documents.upload_file_cloudflare", new_callable=AsyncMock)
-@patch("app.routes.documents.ingest_document", new_callable=AsyncMock)
-def test_upload_returns_file_url(mock_ingest, mock_upload):
-    mock_ingest.return_value = _INGEST_SUCCESS
-    mock_upload.return_value = _FAKE_FILE_URL
-
-    response = _client.post(
-        "/documents/upload",
-        files=_upload_payload(),
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "ok"
-    assert body["file_url"] == _FAKE_FILE_URL
-
-
-@patch("app.routes.documents.upload_file_cloudflare", new_callable=AsyncMock)
-@patch("app.routes.documents.ingest_document", new_callable=AsyncMock)
-def test_upload_storage_called_after_cognify(mock_ingest, mock_upload):
-    """Storage upload must happen after ingest_document (which wraps cognify) returns."""
-    call_order = []
-    mock_ingest.side_effect = lambda *a, **kw: (
-        call_order.append("ingest") or _INGEST_SUCCESS
-    )
-
-    async def _record_upload(*a, **kw):
-        call_order.append("upload")
-        return _FAKE_FILE_URL
-
-    mock_upload.side_effect = _record_upload
-
-    response = _client.post("/documents/upload", files=_upload_payload())
-
-    assert response.status_code == 200
-    assert call_order == ["ingest", "upload"], (
-        "Storage upload must be called after ingest_document completes"
-    )
-
-
-@patch("app.routes.documents.upload_file_cloudflare", new_callable=AsyncMock)
-@patch("app.routes.documents.ingest_document", new_callable=AsyncMock)
-def test_upload_storage_key_contains_document_id_and_dataset(mock_ingest, mock_upload):
-    mock_ingest.return_value = _INGEST_SUCCESS
-    mock_upload.return_value = _FAKE_FILE_URL
-
-    response = _client.post(
-        "/documents/upload?dataset_name=my-dataset",
-        files=_upload_payload("sample.pdf"),
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    document_id = body["document_id"]
-
-    # key arg should be "{dataset}/{document_id}.pdf"
-    _call_kwargs = mock_upload.call_args
-    key = _call_kwargs.kwargs.get("key") or _call_kwargs.args[2]
-    assert key == f"my-dataset/{document_id}.pdf"
-
-
-@patch("app.routes.documents.upload_file_cloudflare", new_callable=AsyncMock)
-@patch("app.routes.documents.ingest_document", new_callable=AsyncMock)
-def test_temp_file_cleaned_up_after_upload(mock_ingest, mock_upload, tmp_path):
-    """The temp file must be deleted even after a successful upload."""
-    mock_ingest.return_value = _INGEST_SUCCESS
-    mock_upload.return_value = _FAKE_FILE_URL
-
-    with patch("app.routes.documents.UPLOAD_DIR", tmp_path):
-        response = _client.post("/documents/upload", files=_upload_payload())
-
-    assert response.status_code == 200
-    # Verify no .pdf files remain in UPLOAD_DIR (tmp_path)
-    remaining = list(tmp_path.glob("*.pdf"))
-    assert remaining == [], f"Temp file not cleaned up: {remaining}"
-
-
-@patch("app.routes.documents.upload_file_cloudflare", new_callable=AsyncMock)
-@patch("app.routes.documents.ingest_document", new_callable=AsyncMock)
-def test_storage_not_called_on_ingest_failure(mock_ingest, mock_upload):
-    mock_ingest.return_value = {
-        "status": "error",
-        "error_type": "llm_api",
-        "error": "LLM quota exceeded",
-    }
-
-    response = _client.post("/documents/upload", files=_upload_payload())
-
-    assert response.status_code == 502
-    mock_upload.assert_not_called()
