@@ -4,25 +4,36 @@ Document knowledge graph system powered by Cognee. Ingests PDFs/CSVs/text via `c
 
 ## What to ignore
 - `archive/` — deprecated, do not review
-- `frontend/` — deprecated, not in active development
 - `backend/app/services/extraction/` — old ETL pipeline, being replaced
 - `supabase/` — not part of current sprint
 
 ## Active codebase (review here)
-- `backend/app/` — all active code
+- `backend/app/` — all active backend code
 - `backend/tests/` — pytest tests
+- `frontend/` — React SPA (active development)
 
 ## Tech stack
-- FastAPI + Uvicorn (Python 3.10+)
+
+### Backend
+- FastAPI + Uvicorn (Python 3.12)
 - Cognee (`cognee[postgres,gemini]>=0.5.5`) — knowledge graph engine
   - Graph store: Kuzu (embedded, `.cognee_system/`)
-  - Vector store: pgvector via Supabase PostgreSQL
+  - Vector store: pgvector via PostgreSQL
   - LLM: Google Gemini (`LLM_PROVIDER=gemini`)
   - Embeddings: configured via `EMBEDDING_PROVIDER` / `EMBEDDING_MODEL`
-- Supabase — document metadata, auth, async client
+- Supabase — document metadata, async client
 - LiteLLM — LLM abstraction layer
 - Cloudflare R2 — raw file storage (pre-signed URLs via `boto3`)
 - Ruff for linting/formatting
+
+### Frontend
+- React 18 + TypeScript
+- Vite (dev server + build)
+- Tailwind CSS
+- React Router v6
+- React Query (TanStack Query v5)
+- react-force-graph-2d — knowledge graph visualization
+- Axios — HTTP client
 
 ## Architecture
 
@@ -54,17 +65,18 @@ GET /api/health              — Supabase connectivity check
 ```
 
 ### Key files
-- `app/main.py` — FastAPI app, lifespan (Supabase → webhooks → queue → Cognee)
+- `app/main.py` — FastAPI app, lifespan (Supabase → wait_for_supabase → webhooks → queue → Cognee → recover_stale_documents)
 - `app/api.py` — central router, mounts all sub-routers under `/api`
 - `app/cognee_config.py` — `setup_cognee()`, wired into lifespan
 - `app/routes/documents.py` — upload, search, graph, list, get, file-url
-- `app/services/ingest.py` — `ingest_document()`, `_extract_structured_data()`, `check_cognee_storage()` (legacy ingest path; also exports its own `search_knowledge_graph()`)
+- `app/services/ingest.py` — `ingest_document()`, `_extract_structured_data()`, `check_cognee_storage()`, `ingest_document_background()` (legacy ingest path)
 - `app/services/cognee_service.py` — `search_knowledge_graph()` (used by `/documents/search` route; separate from `ingest.py`'s version)
 - `app/services/document_pipeline.py` — `run_pipeline()` (background ingest orchestration)
-- `app/services/document_metadata_service.py` — Supabase CRUD for document records
+- `app/services/document_metadata_service.py` — Supabase CRUD for document records + `recover_stale_documents()`
 - `app/services/graph_service.py` — `get_graph_data()` for D3 visualization
-- `app/services/storage.py` — `get_presigned_url()` for Cloudflare R2
-- `app/utils/validation.py` — `validate_dataset_name()`
+- `app/services/storage.py` — `upload_to_r2()` and `get_presigned_url()` for Cloudflare R2
+- `app/services/supabase_check.py` — `wait_for_supabase()` (startup health check)
+- `app/utils/validation.py` — `sanitize_dataset_name()`, `validate_dataset_name()`
 - `app/core/` — Supabase client, LiteLLM client, webhooks, dependencies
 
 ### Other route modules
@@ -74,10 +86,22 @@ GET /api/health              — Supabase connectivity check
 - `app/routes/pattern_recognition_routes.py` — pattern recognition
 - `app/routes/preprocess_routes.py` — preprocessing pipeline
 
+### Frontend pages
+- `/` → `SearchPage` — knowledge graph search
+- `/upload` → `UploadPage` — document upload
+- `/documents` → `DocumentsPage` — document list
+- `/documents/:id` → `DocumentDetailPage` — single document view
+- `/graph` → `GraphPage` — force-graph visualization
+
 ## Running the project
 ```bash
+# Backend
 cd backend
 python -m uvicorn app.main:app --reload
+
+# Frontend
+cd frontend
+npm run dev
 ```
 
 ## Running tests
@@ -91,11 +115,24 @@ cd backend && ruff check   # must pass before merge
 cd backend && ruff format  # auto-format
 ```
 
+## CI/CD (GitHub Actions)
+- `backend-lint-check.yml` — Ruff lint on backend PRs
+- `backend-test.yml` — pytest on backend PRs (skips `test_storage.py` and `test_cognee.py` which need credentials)
+- `frontend-lint-check.yml` — ESLint on frontend PRs
+- `frontend-prettier-check.yml` — Prettier format check on frontend PRs
+- `docker-build.yml` — Docker image build
+- `claude.yml` / `claude-code-review.yml` — Claude Code automation
+- `cleanup-ghcr.yml` — GHCR image cleanup
+- `supabase-deploy.yml` — Supabase deployment
+
 ## Required environment variables
 
-See `.env.example` for a copy-paste template.
+See `.env.example` (project root) for a copy-paste template.
 
 ```
+# General
+ENVIRONMENT, CORS_ALLOWED_ORIGINS
+
 # Supabase (required — used by lifespan, document metadata, search)
 SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
@@ -107,14 +144,11 @@ EMBEDDING_PROVIDER, EMBEDDING_MODEL, EMBEDDING_API_KEY
 VECTOR_DB_PROVIDER, VECTOR_DB_URL
 DB_PROVIDER, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 
-# Webhooks (optional — file extraction disabled without these)
-WEBHOOK_BASE_URL, WEBHOOK_SECRET
+# Cognee timeout (optional, default 300s)
+COGNEE_TIMEOUT_SECONDS
 
 # Object storage (optional — Cloudflare R2)
-# ⚠ Known mismatch: storage.py reads R2_ACCESS_KEY_ID / R2_SECRET_KEY
-#   but .env.example defines CLOUDFLARE_R2_ACCESS_KEY_ID / CLOUDFLARE_R2_SECRET_KEY.
-#   Use the names that storage.py reads:
-R2_ACCESS_KEY_ID, R2_SECRET_KEY, CLOUDFLARE_R2_ENDPOINT, CLOUDFLARE_R2_BUCKET_NAME
+CLOUDFLARE_R2_ENDPOINT, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_KEY, CLOUDFLARE_R2_BUCKET_NAME
 ```
 
 ## Branch & PR naming
@@ -133,11 +167,13 @@ R2_ACCESS_KEY_ID, R2_SECRET_KEY, CLOUDFLARE_R2_ENDPOINT, CLOUDFLARE_R2_BUCKET_NA
 **PR body:** must include `Closes #<number>` — Claude's ticket compliance check depends on this.
 
 ## Code review checklist
-- `run_pipeline()` sanitizes client names via regex (`[^A-Za-z0-9_]` → `_`); `validate_dataset_name()` in `utils/validation.py` exists but is not currently wired into the pipeline
+- `run_pipeline()` sanitizes client names via `sanitize_dataset_name()` from `utils/validation.py`
 - `cognify()` never called without a prior `cognee.add()`
+- Cognee operations in `run_pipeline()` use `asyncio.wait_for()` with `COGNEE_TIMEOUT_SECONDS` (default 300s)
 - Temp files (`/tmp/cognee_uploads/`) deleted in `finally` block of `run_pipeline()`
 - All Cognee operations use `async/await` — no blocking I/O in async routes
 - Exceptions caught and returned as `HTTPException` — no raw tracebacks to client
 - Search endpoint defaults to `SearchType.GRAPH_COMPLETION`
 - `ingest.py` error types (`kuzu_storage`, `llm_api`, `vector_dimension_mismatch`, `no_data_added`) must be mapped to appropriate HTTP status codes in route layer
 - Allowed upload extensions: `.pdf`, `.csv`, `.txt` — max 5 files per request
+- Stale documents (stuck in `processing` >30 min) are auto-recovered to `failed` on startup
