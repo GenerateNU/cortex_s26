@@ -27,11 +27,16 @@ export default function GraphPage() {
     return Array.from(set).sort()
   }, [docs])
 
-  const { data: graphData, isLoading } = useQuery({
+  const { data: rawGraphData, isLoading } = useQuery({
     queryKey: ['graph', selectedDataset],
     queryFn: () => getGraphData(selectedDataset || undefined),
-    staleTime: 5000,
+    staleTime: 30_000,
   })
+
+  const graphData = useMemo(() => {
+    if (!rawGraphData) return undefined
+    return { nodes: [...rawGraphData.nodes], links: [...rawGraphData.links] }
+  }, [rawGraphData])
 
   useEffect(() => {
     const el = wrapperRef.current
@@ -54,6 +59,9 @@ export default function GraphPage() {
   const handleLinkHover = useCallback((link: LinkObj | null) => {
     setHoveredLink(link ? (link.label as string | undefined) ?? null : null)
   }, [])
+
+  const nodeColor = useCallback(() => '#7c3aed', [])
+  const linkColor = useCallback(() => 'rgba(255,255,255,0.2)', [])
 
   const hasData = graphData && (graphData.nodes.length > 0 || graphData.links.length > 0)
 
@@ -180,15 +188,19 @@ export default function GraphPage() {
               width={width}
               height={graphHeight}
               backgroundColor="#000000"
-              nodeColor={() => '#7c3aed'}
+              nodeColor={nodeColor}
               nodeRelSize={6}
-              linkColor={() => 'rgba(255,255,255,0.2)'}
+              linkColor={linkColor}
               linkDirectionalArrowLength={4}
               linkDirectionalArrowRelPos={1}
               nodeLabel="name"
               linkLabel="label"
               onNodeHover={handleNodeHover}
               onLinkHover={handleLinkHover}
+              cooldownTicks={200}
+              d3AlphaDecay={0.05}
+              d3VelocityDecay={0.3}
+              warmupTicks={100}
             />
           )}
         </div>

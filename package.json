@@ -12,6 +12,7 @@
         "types:frontend": "npx supabase gen types typescript --local > frontend/src/types/database.types.ts"
     },
     "devDependencies": {
+        "@playwright/test": "^1.59.1",
         "baseline-browser-mapping": "^2.9.19",
         "supabase": "^2.58.5"
     },

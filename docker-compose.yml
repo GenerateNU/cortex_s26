@@ -17,8 +17,13 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       # Note: DB_PASSWORD must not contain URL-special characters (@, :, /, %)
       VECTOR_DB_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-cortex}
+      GRAPH_DATABASE_PROVIDER: kuzu
+      GRAPH_DATASET_DATABASE_HANDLER: kuzu
+      SYSTEM_ROOT_DIRECTORY: /app/.cognee_system
+      ENABLE_BACKEND_ACCESS_CONTROL: "false"
     volumes:
       - ./backend:/app
+      - /app/.venv
       - cognee-data:/app/.cognee_system
     depends_on:
       postgres:
@@ -30,7 +35,7 @@ services:
     image: pgvector/pgvector:pg16
     container_name: cortex-postgres
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_DB: ${DB_NAME:-cortex}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -50,4 +55,3 @@ volumes:
 networks:
   default:
     name: cortex-network
-    external: true
