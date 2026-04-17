@@ -82,6 +82,35 @@ async def _call_llm(prompt: str, max_retries: int = 6) -> str:
     return ""  # pragma: no cover – loop always returns or raises
 
 
+_BULLET_PREFIXES = ("- ", "* ", "• ", "– ", "— ")
+
+
+def _split_bulleted(raw: list[str]) -> list[str]:
+    """Split bulleted/numbered LLM answers into discrete items.
+
+    GRAPH_COMPLETION returns one narrative string per result; the UI renders
+    a list, so we split on newlines and strip leading bullet/number markers.
+    """
+    items: list[str] = []
+    for block in raw:
+        for line in block.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            for prefix in _BULLET_PREFIXES:
+                if line.startswith(prefix):
+                    line = line[len(prefix) :].strip()
+                    break
+            else:
+                # Strip "1. ", "2) " style numeric prefixes
+                head, sep, rest = line.partition(" ")
+                if sep and head.rstrip(".)").isdigit():
+                    line = rest.strip()
+            if line:
+                items.append(line)
+    return items
+
+
 def _extract_search_text(result) -> str:
     """Pull a plain string out of a Cognee SearchResult, dict, or raw value."""
     if hasattr(result, "search_result"):
@@ -189,8 +218,8 @@ async def run_pipeline(
         # ------------------------------------------------------------------
         summary_results = await asyncio.wait_for(
             cognee.search(
-                query_text="Summarize this document",
-                query_type=SearchType.CHUNKS,
+                query_text="Provide a concise executive summary of this document.",
+                query_type=SearchType.GRAPH_SUMMARY_COMPLETION,
                 datasets=[client_name],
             ),
             timeout=_COGNEE_TIMEOUT,
@@ -198,33 +227,43 @@ async def run_pipeline(
         summary = _extract_search_text(summary_results[0]) if summary_results else ""
 
         # ------------------------------------------------------------------
-        # Step 6 – Extract insights
+        # Step 6 – Extract insights (key relationships & takeaways)
         # ------------------------------------------------------------------
         await _update(progress_stage="extracting_insights")
         insights_results = await asyncio.wait_for(
             cognee.search(
-                query_text="What are all the entities and relationships?",
-                query_type=SearchType.CHUNKS,
+                query_text=(
+                    "What are the key insights, relationships, and notable "
+                    "takeaways from this document? Return each as a separate "
+                    "bullet point."
+                ),
+                query_type=SearchType.GRAPH_COMPLETION,
                 datasets=[client_name],
             ),
             timeout=_COGNEE_TIMEOUT,
         )
-        insights: list[str] = [
-            _extract_search_text(r) for r in (insights_results or [])
-        ]
+        insights: list[str] = _split_bulleted(
+            [_extract_search_text(r) for r in (insights_results or [])]
+        )
 
         # ------------------------------------------------------------------
         # Step 7 – Extract entities
         # ------------------------------------------------------------------
         entity_results = await asyncio.wait_for(
             cognee.search(
-                query_text="List all entities",
-                query_type=SearchType.CHUNKS,
+                query_text=(
+                    "List the key named entities in this document "
+                    "(people, organizations, products, locations, identifiers). "
+                    "Return one entity per line, no descriptions."
+                ),
+                query_type=SearchType.GRAPH_COMPLETION,
                 datasets=[client_name],
             ),
             timeout=_COGNEE_TIMEOUT,
         )
-        entities: list[str] = [_extract_search_text(r) for r in (entity_results or [])]
+        entities: list[str] = _split_bulleted(
+            [_extract_search_text(r) for r in (entity_results or [])]
+        )
 
         # ------------------------------------------------------------------
         # Step 8 – Write final state to DB

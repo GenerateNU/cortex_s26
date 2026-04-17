@@ -262,14 +262,14 @@ function ResultCard({ result, index }: { result: SearchResult; index: number }) 
           </svg>
         </div>
 
-        {/* Collapsed footer — dataset pill */}
-        {!isExpanded && result.dataset_name && (
+        {/* Collapsed footer — document pill */}
+        {!isExpanded && (result.sources?.[0]?.original_filename || result.dataset_name) && (
           <div className="mt-3 ml-9 flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] border border-violet-500/20 bg-violet-500/10 text-violet-300">
               <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                 <path d="M1 2.5h7M1 4.5h5M1 6.5h3" />
               </svg>
-              {result.dataset_name.replace(/_/g, ' ')}
+              {result.sources?.[0]?.original_filename ?? result.dataset_name!.replace(/_/g, ' ')}
             </span>
           </div>
         )}
@@ -282,14 +282,14 @@ function ResultCard({ result, index }: { result: SearchResult; index: number }) 
           <div className="mx-5 h-px bg-white/[0.06]" />
 
           <div className="p-5 space-y-4">
-            {/* Dataset + word count metadata row */}
+            {/* Document + word count metadata row */}
             <div className="flex items-center gap-2 flex-wrap">
-              {result.dataset_name && (
+              {(result.sources?.[0]?.original_filename || result.dataset_name) && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border border-violet-500/20 bg-violet-500/10 text-violet-300">
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <path d="M1 2.5h8M1 5h6M1 7.5h4" />
                   </svg>
-                  {result.dataset_name.replace(/_/g, ' ')}
+                  {result.sources?.[0]?.original_filename ?? result.dataset_name!.replace(/_/g, ' ')}
                 </span>
               )}
               <span className="text-[11px] text-white/25">{wordCount} words</span>
