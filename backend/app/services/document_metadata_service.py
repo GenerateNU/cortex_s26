@@ -43,10 +43,10 @@ async def find_document_by_hash(content_hash: str) -> dict | None:
         .eq("status", "completed")
         .order("uploaded_at", desc=True)
         .limit(1)
-        .maybe_single()
         .execute()
     )
-    return _normalize(result.data) if result.data else None
+    row = result.data[0] if result.data else None
+    return _normalize(row) if row else None
 
 
 async def get_all_documents() -> list[dict]:

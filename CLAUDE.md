@@ -69,8 +69,8 @@ GET /api/health              — Supabase connectivity check
 - `app/api.py` — central router, mounts all sub-routers under `/api`
 - `app/cognee_config.py` — `setup_cognee()`, wired into lifespan
 - `app/routes/documents.py` — upload, search, graph, list, get, file-url
-- `app/services/ingest.py` — `ingest_document()`, `_extract_structured_data()`, `check_cognee_storage()`, `ingest_document_background()` (legacy ingest path)
-- `app/services/cognee_service.py` — `search_knowledge_graph()` (used by `/documents/search` route; separate from `ingest.py`'s version)
+- `app/services/ingest.py` — `check_cognee_storage()` (startup writability check for `.cognee_system/`)
+- `app/services/cognee_service.py` — `search_knowledge_graph()` (used by `/documents/search` route)
 - `app/services/document_pipeline.py` — `run_pipeline()` (background ingest orchestration)
 - `app/services/document_metadata_service.py` — Supabase CRUD for document records + `recover_stale_documents()`
 - `app/services/graph_service.py` — `get_graph_data()` for D3 visualization
@@ -78,13 +78,6 @@ GET /api/health              — Supabase connectivity check
 - `app/services/supabase_check.py` — `wait_for_supabase()` (startup health check)
 - `app/utils/validation.py` — `sanitize_dataset_name()`, `validate_dataset_name()`
 - `app/core/` — Supabase client, LiteLLM client, webhooks, dependencies
-
-### Other route modules
-- `app/routes/search_routes.py` — legacy semantic/RAG search (Supabase embeddings)
-- `app/routes/classification_routes.py` — document classification
-- `app/routes/migration_routes.py` — data migration utilities
-- `app/routes/pattern_recognition_routes.py` — pattern recognition
-- `app/routes/preprocess_routes.py` — preprocessing pipeline
 
 ### Frontend pages
 - `/` → `SearchPage` — knowledge graph search
@@ -95,6 +88,15 @@ GET /api/health              — Supabase connectivity check
 
 ## Running the project
 ```bash
+# Postgres (pgvector) — required for Cognee; exposes localhost:5433
+docker compose up -d postgres
+
+# Local Supabase stack — metadata store (PostgREST on :54321, Postgres on :54322)
+# Applies supabase/migrations/*.sql automatically. Run once per machine, persists across restarts.
+supabase start
+# If cortex_documents schema is out of date after pulling new migrations:
+supabase db reset --local
+
 # Backend
 cd backend
 python -m uvicorn app.main:app --reload
@@ -103,6 +105,10 @@ python -m uvicorn app.main:app --reload
 cd frontend
 npm run dev
 ```
+
+Point `.env` at the local Supabase:
+- `SUPABASE_URL=http://127.0.0.1:54321`
+- `SUPABASE_SERVICE_ROLE_KEY=<value from "supabase status -o env">`
 
 ## Running tests
 ```bash
@@ -147,6 +153,12 @@ DB_PROVIDER, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 # Cognee timeout (optional, default 300s)
 COGNEE_TIMEOUT_SECONDS
 
+# Cognee storage path (optional, default ".cognee_system")
+COGNEE_SYSTEM_PATH
+
+# Webhooks (required if webhook dispatch is enabled in lifespan)
+WEBHOOK_BASE_URL, WEBHOOK_SECRET
+
 # Object storage (optional — Cloudflare R2)
 CLOUDFLARE_R2_ENDPOINT, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_KEY, CLOUDFLARE_R2_BUCKET_NAME
 ```
@@ -174,6 +186,5 @@ CLOUDFLARE_R2_ENDPOINT, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_KEY, C
 - All Cognee operations use `async/await` — no blocking I/O in async routes
 - Exceptions caught and returned as `HTTPException` — no raw tracebacks to client
 - Search endpoint defaults to `SearchType.GRAPH_COMPLETION`
-- `ingest.py` error types (`kuzu_storage`, `llm_api`, `vector_dimension_mismatch`, `no_data_added`) must be mapped to appropriate HTTP status codes in route layer
 - Allowed upload extensions: `.pdf`, `.csv`, `.txt` — max 5 files per request
 - Stale documents (stuck in `processing` >30 min) are auto-recovered to `failed` on startup
