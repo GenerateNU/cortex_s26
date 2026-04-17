@@ -2,7 +2,12 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Navbar from '../components/Navbar'
-import { getDocument, getDocumentFileUrl, type Document, type ProgressStage } from '../services/api'
+import {
+  getDocument,
+  getDocumentFileUrl,
+  type Document,
+  type ProgressStage,
+} from '../services/api'
 
 const DOC_TYPE_COLORS: Record<string, string> = {
   RFQ: 'bg-blue-500/15 border-blue-500/25 text-blue-300',
@@ -52,10 +57,10 @@ function parseInsight(insight: string): { parts: string[]; arrows: boolean } {
   const sep = insight.includes(' → ')
     ? ' → '
     : insight.includes('->')
-    ? '->'
-    : insight.includes(' - ')
-    ? ' - '
-    : null
+      ? '->'
+      : insight.includes(' - ')
+        ? ' - '
+        : null
   if (sep) {
     return { parts: insight.split(sep), arrows: true }
   }
@@ -66,12 +71,16 @@ export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [activeTab, setActiveTab] = useState<Tab>('summary')
 
-  const { data: doc, isLoading, isError } = useQuery({
+  const {
+    data: doc,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['document', id],
     queryFn: () => getDocument(id!),
     enabled: !!id,
     staleTime: 5000,
-    refetchInterval: (query) => {
+    refetchInterval: query => {
       const d = query.state.data
       return d?.status === 'processing' ? 2000 : false
     },
@@ -103,7 +112,16 @@ export default function DocumentDetailPage() {
             to="/documents"
             className="inline-flex items-center gap-2 text-sm text-[#a1a1aa] hover:text-white transition-colors mb-8"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="13" y1="8" x2="3" y2="8" />
               <polyline points="7,12 3,8 7,4" />
             </svg>
@@ -125,7 +143,9 @@ export default function DocumentDetailPage() {
           {/* Error */}
           {isError && (
             <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-8 text-center">
-              <p className="text-red-300 font-medium mb-2">Failed to load document</p>
+              <p className="text-red-300 font-medium mb-2">
+                Failed to load document
+              </p>
               <p className="text-[#a1a1aa] text-sm">
                 The document may not exist or there was a server error.
               </p>
@@ -154,7 +174,9 @@ export default function DocumentDetailPage() {
                     </span>
                   )}
                   {doc.document_type && (
-                    <span className={`px-3 py-1 rounded-full text-xs border font-medium ${DOC_TYPE_COLORS[doc.document_type] ?? 'bg-white/5 border-white/15 text-zinc-300'}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs border font-medium ${DOC_TYPE_COLORS[doc.document_type] ?? 'bg-white/5 border-white/15 text-zinc-300'}`}
+                    >
                       {doc.document_type}
                     </span>
                   )}
@@ -172,7 +194,9 @@ export default function DocumentDetailPage() {
                     <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-violet-500 transition-all duration-700"
-                        style={{ width: `${STAGE_PERCENT[doc.progress_stage]}%` }}
+                        style={{
+                          width: `${STAGE_PERCENT[doc.progress_stage]}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -186,7 +210,9 @@ export default function DocumentDetailPage() {
                     key={key}
                     onClick={() => setActiveTab(key)}
                     className={`relative px-4 py-2.5 text-sm font-medium transition-colors duration-200 ${
-                      activeTab === key ? 'text-white' : 'text-zinc-400 hover:text-white'
+                      activeTab === key
+                        ? 'text-white'
+                        : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
@@ -213,8 +239,12 @@ export default function DocumentDetailPage() {
               {/* Content */}
               {activeTab === 'document' && <DocumentTab doc={doc} />}
               {activeTab === 'summary' && <SummaryTab doc={doc} />}
-              {activeTab === 'insights' && <InsightsTab insights={doc.insights ?? []} />}
-              {activeTab === 'entities' && <EntitiesTab entities={doc.entities ?? []} />}
+              {activeTab === 'insights' && (
+                <InsightsTab insights={doc.insights ?? []} />
+              )}
+              {activeTab === 'entities' && (
+                <EntitiesTab entities={doc.entities ?? []} />
+              )}
             </>
           )}
         </div>
@@ -241,7 +271,8 @@ function DocumentTab({ doc }: { doc: Document }) {
     return (
       <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
         <p className="text-[#a1a1aa] text-sm">
-          Raw file not stored — configure Cloudflare R2 credentials to enable document storage.
+          Raw file not stored — configure Cloudflare R2 credentials to enable
+          document storage.
         </p>
       </div>
     )
@@ -270,7 +301,16 @@ function DocumentTab({ doc }: { doc: Document }) {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
         >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 13 13"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M6.5 1v7M6.5 8l-2.5-2.5M6.5 8l2.5-2.5" />
             <path d="M1 10v1.5A1.5 1.5 0 002.5 13h8a1.5 1.5 0 001.5-1.5V10" />
           </svg>
@@ -291,7 +331,9 @@ function DocumentTab({ doc }: { doc: Document }) {
 
       {isCsv && (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-          <p className="text-sm text-[#a1a1aa] mb-3">CSV files cannot be previewed inline.</p>
+          <p className="text-sm text-[#a1a1aa] mb-3">
+            CSV files cannot be previewed inline.
+          </p>
           <a
             href={data.url}
             download={data.filename}
@@ -306,7 +348,9 @@ function DocumentTab({ doc }: { doc: Document }) {
 
       {!isPdf && !isCsv && (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-          <p className="text-sm text-[#a1a1aa] mb-3">Preview not available for this file type.</p>
+          <p className="text-sm text-[#a1a1aa] mb-3">
+            Preview not available for this file type.
+          </p>
           <a
             href={data.url}
             download={data.filename}
@@ -325,9 +369,10 @@ function DocumentTab({ doc }: { doc: Document }) {
 function StatusBadge({ doc }: { doc: Document }) {
   const isCompleted = doc.status === 'completed'
   const isFailed = doc.status === 'failed'
-  const label = doc.status === 'processing'
-    ? STAGE_LABELS[doc.progress_stage]
-    : doc.status.charAt(0).toUpperCase() + doc.status.slice(1)
+  const label =
+    doc.status === 'processing'
+      ? STAGE_LABELS[doc.progress_stage]
+      : doc.status.charAt(0).toUpperCase() + doc.status.slice(1)
 
   return (
     <span
@@ -335,13 +380,17 @@ function StatusBadge({ doc }: { doc: Document }) {
         isCompleted
           ? 'bg-green-500/15 border-green-500/25 text-green-300'
           : isFailed
-          ? 'bg-red-500/15 border-red-500/25 text-red-300'
-          : 'bg-yellow-500/15 border-yellow-500/25 text-yellow-300'
+            ? 'bg-red-500/15 border-red-500/25 text-red-300'
+            : 'bg-yellow-500/15 border-yellow-500/25 text-yellow-300'
       }`}
     >
       <span
         className={`w-1.5 h-1.5 rounded-full ${
-          isCompleted ? 'bg-green-400' : isFailed ? 'bg-red-400' : 'bg-yellow-400 animate-pulse'
+          isCompleted
+            ? 'bg-green-400'
+            : isFailed
+              ? 'bg-red-400'
+              : 'bg-yellow-400 animate-pulse'
         }`}
       />
       {label}
@@ -365,7 +414,9 @@ function SummaryTab({ doc }: { doc: Document }) {
   if (!doc.summary) {
     return (
       <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
-        <p className="text-[#a1a1aa] text-sm">No summary available for this document.</p>
+        <p className="text-[#a1a1aa] text-sm">
+          No summary available for this document.
+        </p>
       </div>
     )
   }
@@ -373,7 +424,9 @@ function SummaryTab({ doc }: { doc: Document }) {
   return (
     <div className="space-y-4">
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-        <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{doc.summary}</p>
+        <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+          {doc.summary}
+        </p>
       </div>
       <div className="flex items-center gap-4 text-xs text-[#a1a1aa]">
         <span>{doc.raw_chunks_count} chunks processed</span>
@@ -414,15 +467,21 @@ function InsightsTab({ insights }: { insights: string[] }) {
               <div className="flex flex-wrap items-start gap-1.5">
                 {parts.map((part, i) => (
                   <span key={i} className="flex items-start gap-1.5 min-w-0">
-                    <span className="text-sm text-white/80 break-words min-w-0">{part.trim()}</span>
+                    <span className="text-sm text-white/80 break-words min-w-0">
+                      {part.trim()}
+                    </span>
                     {i < parts.length - 1 && (
-                      <span className="text-violet-400 font-semibold text-sm flex-shrink-0">→</span>
+                      <span className="text-violet-400 font-semibold text-sm flex-shrink-0">
+                        →
+                      </span>
                     )}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-white/80 leading-relaxed break-words">{insight}</p>
+              <p className="text-sm text-white/80 leading-relaxed break-words">
+                {insight}
+              </p>
             )}
           </div>
         )

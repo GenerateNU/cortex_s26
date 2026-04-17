@@ -24,9 +24,8 @@ from dotenv import load_dotenv
 # Load real credentials from project root .env
 load_dotenv(override=True)
 
-import pytest  # noqa: E402
-
 import cognee  # noqa: E402
+import pytest  # noqa: E402
 from cognee.api.v1.search import SearchType  # noqa: E402
 
 # ---------------------------------------------------------------------------

@@ -1,7 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { searchChunks, listDocuments, type GraphNode, type GraphLink } from '../services/api'
+import {
+  searchChunks,
+  listDocuments,
+  type GraphNode,
+  type GraphLink,
+} from '../services/api'
 
 interface ConnectedEntity {
   id: string
@@ -18,7 +23,13 @@ interface Props {
   onSelectNode: (node: GraphNode) => void
 }
 
-export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectNode }: Props) {
+export default function NodeDetailPanel({
+  node,
+  links,
+  nodes,
+  onClose,
+  onSelectNode,
+}: Props) {
   const panelRef = useRef<HTMLDivElement>(null)
 
   // Close on click outside
@@ -28,7 +39,10 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
         onClose()
       }
     }
-    const timer = setTimeout(() => document.addEventListener('mousedown', handler), 100)
+    const timer = setTimeout(
+      () => document.addEventListener('mousedown', handler),
+      100
+    )
     return () => {
       clearTimeout(timer)
       document.removeEventListener('mousedown', handler)
@@ -46,21 +60,37 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
 
   // Find connected entities from graph data
   const connected: ConnectedEntity[] = []
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]))
+  const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
   for (const link of links) {
-    const src = typeof link.source === 'object' ? (link.source as GraphNode).id : link.source
-    const tgt = typeof link.target === 'object' ? (link.target as GraphNode).id : link.target
+    const src =
+      typeof link.source === 'object'
+        ? (link.source as GraphNode).id
+        : link.source
+    const tgt =
+      typeof link.target === 'object'
+        ? (link.target as GraphNode).id
+        : link.target
 
     if (src === node.id) {
       const target = nodeMap.get(tgt)
       if (target) {
-        connected.push({ id: target.id, name: target.name, relationship: link.label, direction: 'outgoing' })
+        connected.push({
+          id: target.id,
+          name: target.name,
+          relationship: link.label,
+          direction: 'outgoing',
+        })
       }
     } else if (tgt === node.id) {
       const source = nodeMap.get(src)
       if (source) {
-        connected.push({ id: source.id, name: source.name, relationship: link.label, direction: 'incoming' })
+        connected.push({
+          id: source.id,
+          name: source.name,
+          relationship: link.label,
+          direction: 'incoming',
+        })
       }
     }
   }
@@ -83,9 +113,9 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
 
   // Match documents that mention this entity in their entities array
   const relatedDocs = docs.filter(
-    (d) =>
+    d =>
       d.status === 'completed' &&
-      d.entities?.some((e) => e.toLowerCase().includes(node.name.toLowerCase())),
+      d.entities?.some(e => e.toLowerCase().includes(node.name.toLowerCase()))
   )
 
   return (
@@ -93,7 +123,8 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
       ref={panelRef}
       className="absolute top-0 right-0 z-30 h-full w-[380px] max-w-[90%] overflow-y-auto"
       style={{
-        background: 'linear-gradient(180deg, rgba(10,10,12,0.97) 0%, rgba(6,6,8,0.99) 100%)',
+        background:
+          'linear-gradient(180deg, rgba(10,10,12,0.97) 0%, rgba(6,6,8,0.99) 100%)',
         borderLeft: '1px solid rgba(255,255,255,0.06)',
         boxShadow: '-8px 0 40px -10px rgba(0,0,0,0.6)',
         animation: 'slideIn 0.2s ease-out',
@@ -107,7 +138,10 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
       `}</style>
 
       {/* Header */}
-      <div className="sticky top-0 z-10 px-5 pt-5 pb-4" style={{ background: 'inherit' }}>
+      <div
+        className="sticky top-0 z-10 px-5 pt-5 pb-4"
+        style={{ background: 'inherit' }}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-white truncate leading-tight">
@@ -126,7 +160,15 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
             onClick={onClose}
             className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-white/5 border border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/10 transition-colors"
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            >
               <line x1="2" y1="2" x2="10" y2="10" />
               <line x1="10" y1="2" x2="2" y2="10" />
             </svg>
@@ -154,17 +196,30 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
                 >
                   <span
                     className="shrink-0 w-2 h-2 rounded-full"
-                    style={{ background: '#7c3aed', boxShadow: '0 0 6px 1px rgba(124,58,237,0.3)' }}
+                    style={{
+                      background: '#7c3aed',
+                      boxShadow: '0 0 6px 1px rgba(124,58,237,0.3)',
+                    }}
                   />
                   <div className="min-w-0 flex-1">
                     <span className="block text-sm text-white/80 group-hover:text-white truncate">
-                      {/^[0-9a-f]{8}-/i.test(c.name) ? c.id.slice(0, 12) + '...' : c.name}
+                      {/^[0-9a-f]{8}-/i.test(c.name)
+                        ? c.id.slice(0, 12) + '...'
+                        : c.name}
                     </span>
                     <span className="block text-[10px] text-white/25 truncate">
-                      {c.direction === 'outgoing' ? '\u2192' : '\u2190'} {c.relationship}
+                      {c.direction === 'outgoing' ? '\u2192' : '\u2190'}{' '}
+                      {c.relationship}
                     </span>
                   </div>
-                  <svg className="shrink-0 w-3.5 h-3.5 text-white/15 group-hover:text-white/30 transition-colors" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <svg
+                    className="shrink-0 w-3.5 h-3.5 text-white/15 group-hover:text-white/30 transition-colors"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  >
                     <polyline points="5,3 9,7 5,11" />
                   </svg>
                 </button>
@@ -181,7 +236,7 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
             </h3>
             {searchLoading ? (
               <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
+                {[1, 2, 3].map(i => (
                   <div key={i} className="skeleton h-16 rounded-lg" />
                 ))}
               </div>
@@ -204,7 +259,9 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-white/20 italic">No related content found</p>
+              <p className="text-xs text-white/20 italic">
+                No related content found
+              </p>
             )}
           </section>
         )}
@@ -216,13 +273,19 @@ export default function NodeDetailPanel({ node, links, nodes, onClose, onSelectN
               Source Documents
             </h3>
             <div className="space-y-1.5">
-              {relatedDocs.map((doc) => (
+              {relatedDocs.map(doc => (
                 <Link
                   key={doc.id}
                   to={`/documents/${doc.id}`}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/[0.08] transition-all group"
                 >
-                  <svg className="shrink-0 w-4 h-4 text-white/20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2">
+                  <svg
+                    className="shrink-0 w-4 h-4 text-white/20"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                  >
                     <path d="M4 1h6l4 4v10H4V1z" />
                     <polyline points="10,1 10,5 14,5" />
                   </svg>
