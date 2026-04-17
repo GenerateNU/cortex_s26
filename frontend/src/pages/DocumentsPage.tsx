@@ -14,7 +14,11 @@ const DOC_TYPE_COLORS: Record<string, string> = {
 
 function formatDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return new Date(iso).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
   } catch {
     return iso
   }
@@ -23,27 +27,30 @@ function formatDate(iso: string): string {
 export default function DocumentsPage() {
   const [searchParams] = useSearchParams()
   const [nameFilter, setNameFilter] = useState('')
-  const [datasetFilter, setDatasetFilter] = useState(searchParams.get('dataset') ?? '')
+  const [datasetFilter, setDatasetFilter] = useState(
+    searchParams.get('dataset') ?? ''
+  )
 
-  const hasProcessing = (docs: Document[]) => docs.some((d) => d.status === 'processing')
+  const hasProcessing = (docs: Document[]) =>
+    docs.some(d => d.status === 'processing')
 
   const { data: docs = [], isLoading } = useQuery({
     queryKey: ['documents'],
     queryFn: listDocuments,
     staleTime: 5000,
-    refetchInterval: (query) => {
+    refetchInterval: query => {
       const docs = query.state.data
       return docs && hasProcessing(docs) ? 5000 : false
     },
   })
 
   const datasets = useMemo(() => {
-    const set = new Set(docs.map((d) => d.dataset_name).filter(Boolean))
+    const set = new Set(docs.map(d => d.dataset_name).filter(Boolean))
     return Array.from(set).sort()
   }, [docs])
 
   const filtered = useMemo(() => {
-    return docs.filter((doc) => {
+    return docs.filter(doc => {
       const matchName = nameFilter
         ? doc.original_filename.toLowerCase().includes(nameFilter.toLowerCase())
         : true
@@ -70,7 +77,8 @@ export default function DocumentsPage() {
         <div className="pt-10 mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Documents</h1>
           <p className="text-[#a1a1aa] text-sm">
-            {docs.length} document{docs.length !== 1 ? 's' : ''} in your knowledge base
+            {docs.length} document{docs.length !== 1 ? 's' : ''} in your
+            knowledge base
           </p>
         </div>
 
@@ -78,7 +86,16 @@ export default function DocumentsPage() {
         <div className="flex flex-col sm:flex-row gap-3 mb-8">
           <div className="relative flex-1">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="7" cy="7" r="4.5" />
                 <line x1="10.5" y1="10.5" x2="14" y2="14" />
               </svg>
@@ -86,7 +103,7 @@ export default function DocumentsPage() {
             <input
               type="text"
               value={nameFilter}
-              onChange={(e) => setNameFilter(e.target.value)}
+              onChange={e => setNameFilter(e.target.value)}
               placeholder="Filter by filename…"
               className="input-dark pl-9"
             />
@@ -94,12 +111,14 @@ export default function DocumentsPage() {
 
           <select
             value={datasetFilter}
-            onChange={(e) => setDatasetFilter(e.target.value)}
+            onChange={e => setDatasetFilter(e.target.value)}
             className="input-dark sm:w-56 bg-black cursor-pointer"
           >
             <option value="">All clients</option>
-            {datasets.map((ds) => (
-              <option key={ds} value={ds}>{ds}</option>
+            {datasets.map(ds => (
+              <option key={ds} value={ds}>
+                {ds}
+              </option>
             ))}
           </select>
         </div>
@@ -107,8 +126,11 @@ export default function DocumentsPage() {
         {/* Loading */}
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <div
+                key={i}
+                className="bg-white/5 border border-white/10 rounded-2xl p-5"
+              >
                 <div className="skeleton h-4 rounded w-3/4 mb-3" />
                 <div className="skeleton h-3 rounded w-1/2 mb-4" />
                 <div className="flex gap-2">
@@ -123,7 +145,7 @@ export default function DocumentsPage() {
         {/* Document grid */}
         {!isLoading && filtered.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((doc) => (
+            {filtered.map(doc => (
               <DocumentCard key={doc.id} doc={doc} />
             ))}
           </div>
@@ -133,7 +155,17 @@ export default function DocumentsPage() {
         {!isLoading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/20">
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 28 28"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-white/20"
+              >
                 <path d="M18 3H9a1.5 1.5 0 00-1.5 1.5v19A1.5 1.5 0 009 25h10a1.5 1.5 0 001.5-1.5V8L18 3z" />
                 <polyline points="18,3 18,8 23.5,8" />
                 <line x1="11" y1="13" x2="17" y2="13" />
@@ -173,11 +205,17 @@ function DocumentCard({ doc }: { doc: Document }) {
       {/* Filename + status */}
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate group-hover:text-white/90" title={doc.original_filename}>
+          <p
+            className="text-sm font-medium text-white truncate group-hover:text-white/90"
+            title={doc.original_filename}
+          >
             {doc.original_filename}
           </p>
         </div>
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${statusDot}`} title={doc.status} />
+        <span
+          className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${statusDot}`}
+          title={doc.status}
+        />
       </div>
 
       {/* Badges */}
@@ -188,7 +226,9 @@ function DocumentCard({ doc }: { doc: Document }) {
           </span>
         )}
         {doc.document_type && (
-          <span className={`px-2.5 py-0.5 rounded-full text-xs border font-medium ${DOC_TYPE_COLORS[doc.document_type] ?? 'bg-white/5 border-white/15 text-zinc-300'}`}>
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-xs border font-medium ${DOC_TYPE_COLORS[doc.document_type] ?? 'bg-white/5 border-white/15 text-zinc-300'}`}
+          >
             {doc.document_type}
           </span>
         )}
@@ -196,7 +236,10 @@ function DocumentCard({ doc }: { doc: Document }) {
 
       {/* Stats */}
       <p className="text-xs text-[#a1a1aa]">
-        {doc.insights?.length ?? 0} insight{(doc.insights?.length ?? 0) !== 1 ? 's' : ''} · {doc.entities?.length ?? 0} entit{(doc.entities?.length ?? 0) !== 1 ? 'ies' : 'y'}
+        {doc.insights?.length ?? 0} insight
+        {(doc.insights?.length ?? 0) !== 1 ? 's' : ''} ·{' '}
+        {doc.entities?.length ?? 0} entit
+        {(doc.entities?.length ?? 0) !== 1 ? 'ies' : 'y'}
       </p>
 
       {/* Date */}

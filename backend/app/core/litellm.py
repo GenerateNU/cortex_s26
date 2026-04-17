@@ -1,10 +1,13 @@
 import asyncio
 import base64
-import os
+import logging
+import random
 from enum import Enum
 from typing import Any
 
 from litellm import acompletion, aembedding
+
+logger = logging.getLogger(__name__)
 
 
 class ModelType(Enum):
@@ -32,17 +35,10 @@ class LLMClient:
     """Simplified LLM client for agentic workflows."""
 
     def __init__(self):
-        """Initialize client and load API keys."""
+        """Initialize client."""
         self.model = ModelType.GEMINI_FLASH
         self.embedding_model = EmbeddingModelType.GEMINI_TEXT_EMBEDDING
         self.system_prompt: str | None = None
-        self._load_api_keys()
-
-    def _load_api_keys(self) -> None:
-        """Load API keys from environment."""
-        for key in ["GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]:
-            if key in os.environ:
-                os.environ[key] = os.environ[key]
 
     def set_model(self, model: ModelType) -> None:
         """Set the model to use for completions."""
@@ -79,9 +75,7 @@ class LLMClient:
         inputs = [input_text] if isinstance(input_text, str) else input_text
 
         # Generate embeddings with fixed dimensions
-        for attempt in range(
-            10
-        ):  # Retry up to 10 times to handle 5 RPM limit gracefully
+        for attempt in range(10):
             try:
                 response: Any = await aembedding(
                     model=embed_model, input=inputs, dimensions=768
@@ -95,15 +89,17 @@ class LLMClient:
             except Exception as e:
                 error_str = str(e)
                 if attempt == 9:
-                    raise e
+                    raise
                 if "RateLimitError" in error_str or "429" in error_str:
-                    print(
-                        f"Embedding rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...",
-                        flush=True,
+                    wait = min(12 * (2**attempt) + random.uniform(0, 5), 120)
+                    logger.warning(
+                        "Embedding rate limit hit, retrying in %.1fs (attempt %d/10)",
+                        wait,
+                        attempt + 1,
                     )
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(wait)
                 else:
-                    raise e
+                    raise
 
     async def chat(
         self,
@@ -148,9 +144,7 @@ class LLMClient:
         else:
             messages.append({"role": "user", "content": content})
 
-        for attempt in range(
-            10
-        ):  # Retry up to 10 times to handle 5 RPM limit gracefully
+        for attempt in range(10):
             try:
                 return await acompletion(
                     model=self.model.value,
@@ -161,14 +155,14 @@ class LLMClient:
             except Exception as e:
                 error_str = str(e)
                 if attempt == 9:
-                    raise e
+                    raise
                 if "RateLimitError" in error_str or "429" in error_str:
-                    # The free tier is 15-20 requests per minute.
-                    # If we hit the limit, wait 60 seconds to let the quota refresh and respect requested retryDelay
-                    print(
-                        f"Rate limit hit. Waiting 60 seconds before retry (Attempt {attempt + 1}/10)...",
-                        flush=True,
+                    wait = min(12 * (2**attempt) + random.uniform(0, 5), 120)
+                    logger.warning(
+                        "Chat rate limit hit, retrying in %.1fs (attempt %d/10)",
+                        wait,
+                        attempt + 1,
                     )
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(wait)
                 else:
-                    raise e
+                    raise

@@ -4,6 +4,7 @@ Storage service — Cloudflare R2 (S3-compatible).
 Gracefully returns None when R2 is not configured so the pipeline
 continues without object storage.
 """
+
 from __future__ import annotations
 
 import logging
@@ -11,29 +12,40 @@ import os
 
 logger = logging.getLogger(__name__)
 
+_cached_r2_client = None
+_r2_client_checked = False
+
 
 def _r2_bucket() -> str:
     return os.getenv("CLOUDFLARE_R2_BUCKET_NAME", "cortex-documents")
 
 
 def _r2_client():
-    """Lazy R2 client — returns None if any credential is missing."""
+    """Lazy, cached R2 client — returns None if any credential is missing."""
+    global _cached_r2_client, _r2_client_checked
+    if _r2_client_checked:
+        return _cached_r2_client
+
     endpoint = os.getenv("CLOUDFLARE_R2_ENDPOINT", "").rstrip("/")
-    access_key = os.getenv("R2_ACCESS_KEY_ID", "")
-    secret_key = os.getenv("R2_SECRET_KEY", "")
+    access_key = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID", "")
+    secret_key = os.getenv("CLOUDFLARE_R2_SECRET_KEY", "")
+
+    _r2_client_checked = True
 
     if not all([endpoint, access_key, secret_key]):
         return None
 
     try:
         import boto3
-        return boto3.client(
+
+        _cached_r2_client = boto3.client(
             "s3",
             endpoint_url=endpoint,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
             region_name="auto",
         )
+        return _cached_r2_client
     except Exception as exc:
         logger.warning("Failed to create R2 client: %s", exc)
         return None

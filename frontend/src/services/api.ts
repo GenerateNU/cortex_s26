@@ -9,7 +9,13 @@ const client = axios.create({
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type DocumentType = 'RFQ' | 'PO' | 'CFG' | 'Client CSV' | 'Sales CSV' | null
+export type DocumentType =
+  | 'RFQ'
+  | 'PO'
+  | 'CFG'
+  | 'Client CSV'
+  | 'Sales CSV'
+  | null
 
 export type DocumentStatus = 'processing' | 'completed' | 'failed'
 
@@ -61,6 +67,8 @@ export interface SearchResponse {
 export interface UploadedFile {
   id: string
   filename: string
+  duplicate: boolean
+  existing_doc_id: string | null
 }
 
 export interface UploadResponse {
@@ -101,7 +109,7 @@ export async function uploadDocuments(files: File[]): Promise<UploadResponse> {
   const { data } = await client.post<UploadResponse>(
     '/api/documents/upload',
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
+    { headers: { 'Content-Type': 'multipart/form-data' } }
   )
   return data
 }
@@ -116,8 +124,22 @@ export async function listDocuments(): Promise<Document[]> {
   return data
 }
 
-export async function getDocumentFileUrl(id: string): Promise<{ url: string; filename: string }> {
-  const { data } = await client.get<{ url: string; filename: string }>(`/api/documents/${id}/file-url`)
+export async function getDocumentFileUrl(
+  id: string
+): Promise<{ url: string; filename: string }> {
+  const { data } = await client.get<{ url: string; filename: string }>(
+    `/api/documents/${id}/file-url`
+  )
+  return data
+}
+
+export async function searchChunks(
+  query: string,
+  limit = 5
+): Promise<SearchResponse> {
+  const { data } = await client.get<SearchResponse>('/api/documents/search', {
+    params: { q: query, search_type: 'CHUNKS', limit },
+  })
   return data
 }
 

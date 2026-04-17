@@ -1,143 +1,77 @@
 """
-Tests for storage service.
+Tests for storage service (Cloudflare R2).
 """
-from unittest.mock import ANY, MagicMock, mock_open, patch
+
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.storage import (
-    download_file_cloudflare,
-    download_file_supabase,
-    upload_file_cloudflare,
-    upload_file_supabase,
-)
+from app.services.storage import get_presigned_url, upload_to_r2
 
-# ── Cloudflare R2 Tests ────────────────────────────────────────────────────────
 
-class TestUploadFileCloudflare:
+class TestUploadToR2:
     @pytest.mark.asyncio
-    @patch("app.services.storage.s3")
-    async def test_upload_returns_s3_uri(self, mock_s3):
-        mock_s3.upload_file.return_value = None
-        result = await upload_file_cloudflare("local/file.txt", "my-bucket", "folder/file.txt")
+    @patch("app.services.storage._r2_client")
+    async def test_upload_returns_key_on_success(self, mock_client_fn):
+        mock_client = MagicMock()
+        mock_client_fn.return_value = mock_client
 
-        assert result == "s3://my-bucket/folder/file.txt"
+        result = await upload_to_r2("/tmp/file.pdf", "documents/123/file.pdf")
+
+        assert result == "documents/123/file.pdf"
+        mock_client.upload_file.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.storage.s3")
-    async def test_upload_calls_s3_with_correct_args(self, mock_s3):
-        mock_s3.upload_file.return_value = None
+    @patch("app.services.storage._r2_client")
+    async def test_upload_returns_none_when_not_configured(self, mock_client_fn):
+        mock_client_fn.return_value = None
 
-        await upload_file_cloudflare("local/file.txt", "my-bucket", "folder/file.txt")
+        result = await upload_to_r2("/tmp/file.pdf", "documents/123/file.pdf")
 
-        mock_s3.upload_file.assert_called_once_with("local/file.txt", "my-bucket", "folder/file.txt")
-
-    @pytest.mark.asyncio
-    @patch("app.services.storage.s3")
-    async def test_upload_propagates_s3_exception(self, mock_s3):
-        mock_s3.upload_file.side_effect = Exception("S3 upload failed")
-
-        with pytest.raises(Exception, match="S3 upload failed"):
-            await upload_file_cloudflare("local/file.txt", "my-bucket", "folder/file.txt")
-
-
-class TestDownloadFileCloudflare:
-    @pytest.mark.asyncio
-    @patch("app.services.storage.s3")
-    async def test_download_returns_bytes(self, mock_s3):
-        mock_body = MagicMock()
-        mock_body.read.return_value = b"file content"
-        mock_s3.get_object.return_value = {"Body": mock_body}
-
-        result = await download_file_cloudflare("my-bucket", "folder/file.txt")
-
-        assert result == b"file content"
+        assert result is None
 
     @pytest.mark.asyncio
-    @patch("app.services.storage.s3")
-    async def test_download_calls_get_object_with_correct_args(self, mock_s3):
-        mock_body = MagicMock()
-        mock_body.read.return_value = b""
-        mock_s3.get_object.return_value = {"Body": mock_body}
+    @patch("app.services.storage._r2_client")
+    async def test_upload_returns_none_on_exception(self, mock_client_fn):
+        mock_client = MagicMock()
+        mock_client.upload_file.side_effect = Exception("S3 upload failed")
+        mock_client_fn.return_value = mock_client
 
-        await download_file_cloudflare("my-bucket", "folder/file.txt")
+        result = await upload_to_r2("/tmp/file.pdf", "documents/123/file.pdf")
 
-        mock_s3.get_object.assert_called_once_with(Bucket="my-bucket", Key="folder/file.txt")
-
-    @pytest.mark.asyncio
-    @patch("app.services.storage.s3")
-    async def test_download_propagates_s3_exception(self, mock_s3):
-        mock_s3.get_object.side_effect = Exception("Key not found")
-
-        with pytest.raises(Exception, match="Key not found"):
-            await download_file_cloudflare("my-bucket", "folder/file.txt")
+        assert result is None
 
 
-# ── Supabase Tests ─────────────────────────────────────────────────────────────
+class TestGetPresignedUrl:
+    @patch("app.services.storage._r2_client")
+    def test_returns_url_on_success(self, mock_client_fn):
+        mock_client = MagicMock()
+        mock_client.generate_presigned_url.return_value = "https://r2.example.com/signed"
+        mock_client_fn.return_value = mock_client
 
-class TestUploadFileSupabase:
-    @pytest.mark.asyncio
-    @patch("builtins.open", mock_open(read_data=b"file content"))
-    @patch("app.services.storage.supabase")
-    async def test_upload_returns_bucket_key_path(self, mock_supabase):
-        mock_supabase.storage.from_().upload.return_value = None
+        result = get_presigned_url("documents/123/file.pdf")
 
-        result = await upload_file_supabase("local/file.txt", "my-bucket", "folder/file.txt")
-
-        assert result == "my-bucket/folder/file.txt"
-
-    @pytest.mark.asyncio
-    @patch("builtins.open", mock_open(read_data=b"file content"))
-    @patch("app.services.storage.supabase")
-    async def test_upload_calls_storage_with_correct_args(self, mock_supabase):
-        mock_storage = MagicMock()
-        mock_supabase.storage.from_.return_value = mock_storage
-
-        await upload_file_supabase("local/file.txt", "my-bucket", "folder/file.txt")
-
-        mock_supabase.storage.from_.assert_called_once_with("my-bucket")
-        mock_storage.upload.assert_called_once_with(
-            path="folder/file.txt",
-            file=ANY,
-            file_options={"content-type": "application/octet-stream"},
+        assert result == "https://r2.example.com/signed"
+        mock_client.generate_presigned_url.assert_called_once_with(
+            "get_object",
+            Params={"Bucket": "cortex-documents", "Key": "documents/123/file.pdf"},
+            ExpiresIn=3600,
         )
 
-    @pytest.mark.asyncio
-    @patch("builtins.open", mock_open(read_data=b"file content"))
-    @patch("app.services.storage.supabase")
-    async def test_upload_propagates_storage_exception(self, mock_supabase):
-        mock_supabase.storage.from_().upload.side_effect = Exception("Upload failed")
+    @patch("app.services.storage._r2_client")
+    def test_returns_none_when_not_configured(self, mock_client_fn):
+        mock_client_fn.return_value = None
 
-        with pytest.raises(Exception, match="Upload failed"):
-            await upload_file_supabase("local/file.txt", "my-bucket", "folder/file.txt")
+        result = get_presigned_url("documents/123/file.pdf")
 
+        assert result is None
 
-class TestDownloadFileSupabase:
-    @pytest.mark.asyncio
-    @patch("app.services.storage.supabase")
-    async def test_download_returns_bytes(self, mock_supabase):
-        mock_supabase.storage.from_().download.return_value = b"file content"
+    @patch("app.services.storage._r2_client")
+    def test_returns_none_on_exception(self, mock_client_fn):
+        mock_client = MagicMock()
+        mock_client.generate_presigned_url.side_effect = Exception("Failed")
+        mock_client_fn.return_value = mock_client
 
-        result = await download_file_supabase("my-bucket", "folder/file.txt")
+        result = get_presigned_url("documents/123/file.pdf")
 
-        assert result == b"file content"
-
-    @pytest.mark.asyncio
-    @patch("app.services.storage.supabase")
-    async def test_download_calls_storage_with_correct_args(self, mock_supabase):
-        mock_storage = MagicMock()
-        mock_storage.download.return_value = b""
-        mock_supabase.storage.from_.return_value = mock_storage
-
-        await download_file_supabase("my-bucket", "folder/file.txt")
-
-        mock_supabase.storage.from_.assert_called_once_with("my-bucket")
-        mock_storage.download.assert_called_once_with("folder/file.txt")
-
-    @pytest.mark.asyncio
-    @patch("app.services.storage.supabase")
-    async def test_download_propagates_storage_exception(self, mock_supabase):
-        mock_supabase.storage.from_().download.side_effect = Exception("File not found")
-
-        with pytest.raises(Exception, match="File not found"):
-            await download_file_supabase("my-bucket", "folder/file.txt")
+        assert result is None

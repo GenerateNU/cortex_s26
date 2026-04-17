@@ -1,7 +1,10 @@
 import json
+import logging
 import os
 
 from app.core.litellm import LLMClient, ModelType
+
+logger = logging.getLogger(__name__)
 
 
 class PdfExtractionStrategy:
@@ -48,7 +51,7 @@ class PdfExtractionStrategy:
 
         text = response.choices[0].message.content.strip()
 
-        print("JSON response received", flush=True)
+        logger.info("JSON response received")
         try:
             data = json.loads(text)
 
@@ -72,7 +75,7 @@ class PdfExtractionStrategy:
                 "extracted_json": {"error": "LLM did not return JSON"},
             }
 
-        print("JSON response parsed", flush=True)
+        logger.info("JSON response parsed")
 
         return {
             "file_name": file_name,

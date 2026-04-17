@@ -1,6 +1,7 @@
 """
 Graph service — fetches knowledge graph data from cognee for D3 visualization.
 """
+
 from __future__ import annotations
 
 import logging
@@ -47,11 +48,13 @@ async def get_graph_data(dataset: str | None = None) -> dict[str, Any]:
                 node_map[tid] = {"id": tid, "name": tid, "type": "Entity", "val": 1}
             node_map[sid]["val"] += 1
             node_map[tid]["val"] += 1
-            links.append({
-                "source": sid,
-                "target": tid,
-                "label": rel_name or "related_to",
-            })
+            links.append(
+                {
+                    "source": sid,
+                    "target": tid,
+                    "label": rel_name or "related_to",
+                }
+            )
 
         nodes = list(node_map.values())
 
