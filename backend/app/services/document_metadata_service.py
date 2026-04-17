@@ -46,7 +46,9 @@ async def find_document_by_hash(content_hash: str) -> dict | None:
         .maybe_single()
         .execute()
     )
-    return _normalize(result.data) if result.data else None
+    if result is None or not getattr(result, "data", None):
+        return None
+    return _normalize(result.data)
 
 
 async def get_all_documents() -> list[dict]:
@@ -69,7 +71,9 @@ async def get_document(doc_id: str) -> dict | None:
         .maybe_single()
         .execute()
     )
-    return _normalize(result.data) if result.data else None
+    if result is None or not getattr(result, "data", None):
+        return None
+    return _normalize(result.data)
 
 
 async def update_document_stage(doc_id: str, stage: str) -> None:
