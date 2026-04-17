@@ -41,14 +41,19 @@ All routes are mounted under `/api` via `app/api.py`.
 
 ```
 POST /api/documents/upload
+  → compute SHA-256 content_hash of file bytes
+  → find_document_by_hash() — if match, return existing doc (dedup short-circuit)
   → save file to /tmp/cognee_uploads/
-  → create_document() in Supabase (status=processing)
+  → create_document(content_hash=...) in Supabase (status=processing)
   → run_pipeline() in background:
       → upload_to_r2() (raw file to Cloudflare R2)
       → LLM-based client name + document type classification
       → cognee.add(file_path, dataset_name=client_name)
       → cognee.cognify(datasets=[client_name])
-      → cognee.search(SearchType.CHUNKS) × 3 for summary/insights/entities
+      → summary: cognee.search(SearchType.SUMMARIES, datasets=[client_name])
+      → insights + entities: read this dataset's subgraph directly via
+        get_dataset_related_nodes() / get_dataset_related_edges()
+        (keyed on Node.slug, NOT Node.id — edges reference the slug)
       → write results to Supabase (status=completed)
 
 GET /api/documents/search?q=...&dataset=...&search_type=...
@@ -72,7 +77,7 @@ GET /api/health              — Supabase connectivity check
 - `app/services/ingest.py` — `check_cognee_storage()` (startup writability check for `.cognee_system/`)
 - `app/services/cognee_service.py` — `search_knowledge_graph()` (used by `/documents/search` route)
 - `app/services/document_pipeline.py` — `run_pipeline()` (background ingest orchestration)
-- `app/services/document_metadata_service.py` — Supabase CRUD for document records + `recover_stale_documents()`
+- `app/services/document_metadata_service.py` — Supabase CRUD for document records, `find_document_by_hash()` for dedup, `recover_stale_documents()`
 - `app/services/graph_service.py` — `get_graph_data()` for D3 visualization
 - `app/services/storage.py` — `upload_to_r2()` and `get_presigned_url()` for Cloudflare R2
 - `app/services/supabase_check.py` — `wait_for_supabase()` (startup health check)
@@ -109,6 +114,15 @@ npm run dev
 Point `.env` at the local Supabase:
 - `SUPABASE_URL=http://127.0.0.1:54321`
 - `SUPABASE_SERVICE_ROLE_KEY=<value from "supabase status -o env">`
+
+## Resetting local state
+```bash
+# Wipes Cloudflare R2, Supabase docs, Cognee graph (venv + root), pgvector schema
+cd backend && python scripts/clear_all.py --yes
+```
+Note: Cognee resolves its `.cognee_system/` path relative to the installed
+package, so the graph DB lives inside the venv. `clear_all.py` handles both
+the venv path and the backend-root fallback.
 
 ## Running tests
 ```bash
@@ -188,3 +202,4 @@ CLOUDFLARE_R2_ENDPOINT, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_KEY, C
 - Search endpoint defaults to `SearchType.GRAPH_COMPLETION`
 - Allowed upload extensions: `.pdf`, `.csv`, `.txt` — max 5 files per request
 - Stale documents (stuck in `processing` >30 min) are auto-recovered to `failed` on startup
+- Uploads compute SHA-256 `content_hash` and short-circuit via `find_document_by_hash()` before processing
