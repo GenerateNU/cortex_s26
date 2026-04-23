@@ -28,6 +28,12 @@ logger = logging.getLogger(__name__)
 _VALID_DOC_TYPES = {"RFQ", "PO", "CFG", "Client CSV", "Sales CSV"}
 _COGNEE_TIMEOUT = int(os.getenv("COGNEE_TIMEOUT_SECONDS", "300"))
 
+# Serialize run_pipeline() across concurrent uploads so we don't burst
+# past Gemini's per-minute embedding cap. One doc fully completes (or
+# fails) before the next pipeline starts. Upload response still returns
+# immediately; docs queue as status="processing".
+_PIPELINE_LOCK = asyncio.Lock()
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -108,7 +114,20 @@ async def run_pipeline(
     Progress stages written to DB:
         uploading → ingesting → building_graph → analyzing
         → extracting_insights → completed  (or failed)
+
+    Serialized via `_PIPELINE_LOCK`: if several uploads arrive at once,
+    each pipeline waits for the prior one to finish. Upload response still
+    returns immediately — docs queue as status="processing".
     """
+    async with _PIPELINE_LOCK:
+        await _run_pipeline_locked(file_path, doc_id, original_filename)
+
+
+async def _run_pipeline_locked(
+    file_path: Path,
+    doc_id: str,
+    original_filename: str,
+) -> None:
     sb = await get_async_supabase()
 
     async def _update(**fields) -> None:
